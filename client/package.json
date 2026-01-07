@@ -16,7 +16,7 @@
     "expo-image-picker": "~14.7.1",
     "expo-linking": "~6.2.2",
     "expo-location": "~16.5.5",
-    "expo-router": "^3.5.24",
+    "expo-router": "~3.4.10",
     "expo-secure-store": "~12.8.1",
     "expo-sensors": "~12.9.1",
     "expo-status-bar": "~1.11.1",
