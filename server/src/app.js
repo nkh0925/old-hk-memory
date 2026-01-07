@@ -9,6 +9,7 @@ dotenv.config();
 
 // Import routes
 import routes from './routes/index.js';
+import errorHandler from './middleware/errorHandler.js';
 
 // Create Express app
 const app = express();
@@ -58,20 +59,6 @@ app.use((req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-
-  const statusCode = err.statusCode || 500;
-  const code = err.code || 'SERVER_ERROR';
-  const message = err.message || 'Internal server error';
-
-  res.status(statusCode).json({
-    success: false,
-    error: {
-      code,
-      message
-    }
-  });
-});
+app.use(errorHandler)
 
 export default app;
