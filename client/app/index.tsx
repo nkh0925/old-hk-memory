@@ -1,16 +1,14 @@
 import { Redirect } from 'expo-router';
+import { useAuthStore } from 'src/stores/authStore';
 
-/**
- * Root index - redirects to appropriate screen based on auth state
- * For now, redirects to main tab navigator
- */
-export default function Index(): JSX.Element {
-  // TODO: Check authentication state and redirect accordingly
-  // const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  
-  // if (!isAuthenticated) {
-  //   return <Redirect href="/(auth)/login" />;
-  // }
+export default function Index() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  return <Redirect href="/(main)" />;
+  // If authenticated, go to main app
+  if (isAuthenticated) {
+    return <Redirect href={'/(main)' as any} />;
+  }
+
+  // Otherwise, go to auth flow
+  return <Redirect href={'/(auth)/welcome' as any} />;
 }

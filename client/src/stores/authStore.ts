@@ -56,21 +56,21 @@ function getErrorMessage(error: unknown): string {
  * Auth store hook
  * Provides authentication state and actions throughout the app
  */
-export const useAuthStore = create<AuthStore>((set) => ({
-  // Initial state
-  user: null,
-  token: null,
-  isLoading: true,
-  isAuthenticated: false,
-  error: null,
-
-// export const useAuthStore = create<AuthStore>((set, get) => ({
+// export const useAuthStore = create<AuthStore>((set) => ({
 //   // Initial state
 //   user: null,
 //   token: null,
 //   isLoading: true,
 //   isAuthenticated: false,
 //   error: null,
+
+export const useAuthStore = create<AuthStore>((set, get) => ({
+  // Initial state
+  user: null,
+  token: null,
+  isLoading: true,
+  isAuthenticated: false,
+  error: null,
 
   /**
    * Initialize auth state from storage on app start

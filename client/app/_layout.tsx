@@ -1,64 +1,40 @@
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useAuthStore } from 'src/stores/authStore';
+import { Loading } from 'src/components/common';
+import Theme from 'src/theme';
 
-// Prevent splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
-
-/**
- * Root layout component for the application
- * Handles global providers, fonts loading, and navigation structure
- */
-export default function RootLayout(): JSX.Element | null {
-  const [fontsLoaded, fontError] = useFonts({
-    // Add custom fonts here if needed
-    // 'CustomFont': require('@assets/fonts/CustomFont.ttf'),
-  });
+export default function RootLayout() {
+  const initialize = useAuthStore((state) => state.initialize);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   useEffect(() => {
-    const hideSplashScreen = async (): Promise<void> => {
-      try {
-        if (fontsLoaded || fontError) {
-          await SplashScreen.hideAsync();
-        }
-      } catch (error) {
-        console.error('Error hiding splash screen:', error);
-      }
-    };
+    initialize();
+  }, [initialize]);
 
-    hideSplashScreen();
-  }, [fontsLoaded, fontError]);
-
-  // Return null while fonts are loading
-  if (!fontsLoaded && !fontError) {
-    return null;
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Loading />
+      </View>
+    );
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(main)" options={{ headerShown: false }} />
-        </Stack>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <>
+      <StatusBar style="dark" />
+      <Slot />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Theme.colors?.background || '#FFFFFF',
   },
 });

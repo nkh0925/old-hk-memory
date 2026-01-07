@@ -1,55 +1,49 @@
-import { Tabs } from 'expo-router';
+import React from 'react';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from 'src/stores/authStore';
+import theme from 'src/theme';
 
-/**
- * Main tab navigation layout
- * Contains the primary app screens after authentication
- */
-export default function MainLayout(): JSX.Element {
+export default function MainLayout() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <Redirect href={'/(auth)/welcome' as any} />;
+  }
+
   return (
     <Tabs
       screenOptions={{
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.gray500,
         headerShown: false,
-        tabBarActiveTintColor: '#E74C3C',
-        tabBarInactiveTintColor: '#95A5A6',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#ECF0F1',
-          paddingBottom: 5,
-          paddingTop: 5,
+          borderTopColor: theme.colors.border,
+          backgroundColor: theme.colors.background,
+          paddingBottom: theme.spacing.xs,
           height: 60,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
+          fontSize: theme.fontSize.sm,
+          fontWeight: theme.fontWeight.medium,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }): JSX.Element => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, size }): JSX.Element => (
+          title: 'Map',
+          tabBarIcon: ({ color, size }) => (
             <Ionicons name="map-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="memories"
+        name="upload"
         options={{
-          title: 'Memories',
-          tabBarIcon: ({ color, size }): JSX.Element => (
-            <Ionicons name="images-outline" size={size} color={color} />
+          title: 'Upload',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="camera-outline" size={size} color={color} />
           ),
         }}
       />
@@ -57,7 +51,7 @@ export default function MainLayout(): JSX.Element {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }): JSX.Element => (
+          tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}

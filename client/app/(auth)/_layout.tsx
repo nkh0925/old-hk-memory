@@ -1,19 +1,15 @@
+import React from 'react';
 import { Stack } from 'expo-router';
+import Theme from 'src/theme';
 
-/**
- * Authentication group layout
- * Contains login, register, and other auth-related screens
- */
-export default function AuthLayout(): JSX.Element {
+export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
+        contentStyle: { backgroundColor: Theme.colors?.background || '#FFFFFF' },
+        animation: 'slide_from_right',
       }}
-    >
-      <Stack.Screen name="login" />
-      <Stack.Screen name="register" />
-    </Stack>
+    />
   );
 }

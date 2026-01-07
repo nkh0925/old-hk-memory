@@ -1,36 +1,52 @@
 /**
- * District service
- * Handles district listing and details
+ * District Service
+ * Handles district-related API operations
  */
 
 import api from './api';
-import type { District, ApiResponse } from '../types';
+import type { District } from '../types/district';
 
 /**
- * Get all available districts
- * @returns Array of district objects
+ * API response structure for district list
  */
-export async function getDistricts(): Promise<District[]> {
-  try {
-    const response = await api.post<ApiResponse<District[]>>('/districts/list', {});
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+interface DistrictListResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    count: number;
+    districts: District[];
+  };
 }
 
 /**
- * Get detailed information for a specific district
- * @param code - District code identifier
- * @returns District details
+ * Service for district-related API operations
  */
-export async function getDistrictDetail(code: string): Promise<District> {
-  try {
-    const response = await api.post<ApiResponse<District>>('/districts/detail', {
-      code,
-    });
-    return response.data.data;
-  } catch (error) {
-    throw error;
+class DistrictService {
+  /**
+   * Fetches all districts from the API
+   */
+  async getDistricts(): Promise<District[]> {
+    try {
+      const response = await api.post<DistrictListResponse>('/districts/list', {});
+      
+      console.log('=== DISTRICT SERVICE DEBUG ===');
+      console.log('response.data.data.districts:', response.data?.data?.districts);
+      console.log('==============================');
+      
+      if (!response.data?.success) {
+        throw new Error('Failed to fetch districts: API returned unsuccessful response');
+      }
+      
+      return response.data.data.districts;
+    } catch (error) {
+      console.error('DistrictService.getDistricts error:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch districts: ${error.message}`);
+      }
+      throw new Error('Failed to fetch districts: Unknown error occurred');
+    }
   }
 }
+
+export const districtService = new DistrictService();
+export default districtService;

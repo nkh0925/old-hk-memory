@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "oldhkmemory",
+    "entryPoint": "./node_modules/expo-router/entry.js",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
@@ -35,7 +36,7 @@
       "package": "com.oldhkmemory.app",
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_API_KEY"
+          "apiKey": "AIzaSyB0mNQTxq6v12u34KqR2F9s6ITBs6J4Bdo"
         }
       },
       "permissions": [
