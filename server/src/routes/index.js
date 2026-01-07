@@ -1,12 +1,16 @@
 import express from 'express';
 import authRoutes from './auth.js';
 import districtRoutes from './districts.js';
+import photoRoutes from './photos.js';
+import userRoutes from './users.js';
 
 const router = express.Router();
 
 // Mount routes
 router.use('/auth', authRoutes);
 router.use('/districts', districtRoutes);
+router.use('/photos', photoRoutes);
+router.use('/users', userRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
