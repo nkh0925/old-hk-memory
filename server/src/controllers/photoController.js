@@ -166,6 +166,56 @@ export const uploadPhoto = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Get current user's photos
+ * POST /photos/my
+ */
+export const getMyPhotos = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.body;
+    const userId = req.user.id || req.user._id;
+    
+    const skip = (page - 1) * limit;
+    
+    const [photos, total] = await Promise.all([
+      Photo.find({ uploader: userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate('district', 'code name')
+        .lean(),
+      Photo.countDocuments({ uploader: userId })
+    ]);
+    
+    // Transform photos
+    const transformedPhotos = photos.map(photo => ({
+      id: photo._id.toString(),
+      imageUrl: photo.imageUrl,
+      thumbnailUrl: photo.thumbnailUrl || photo.imageUrl,
+      district: photo.district,
+      era: photo.era,
+      createdAt: photo.createdAt,
+    }));
+    
+    res.json({
+      success: true,
+      data: transformedPhotos,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('getMyPhotos error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};
+
+/**
 * Get photos list with filters and pagination
 * POST /photos/list
 * @access Public

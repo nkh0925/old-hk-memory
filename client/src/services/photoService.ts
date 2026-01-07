@@ -39,7 +39,7 @@ class PhotoService {
       const response = await api.post<PhotoListResponse>('/photos/list', params);
       
       console.log('=== PHOTO SERVICE getPhotos DEBUG ===');
-      console.log('response.data:', response.data);
+      console.log('response.data:', JSON.stringify(response.data, null, 2));
       console.log('=====================================');
       
       if (!response.data?.success) {
@@ -64,7 +64,7 @@ class PhotoService {
       const response = await api.post<PhotoMapResponse>('/photos/map', params);
       
       console.log('=== PHOTO SERVICE getMapMarkers DEBUG ===');
-      console.log('response.data:', response.data);
+      console.log('response.data:', JSON.stringify(response.data, null, 2));
       console.log('=========================================');
       
       if (!response.data?.success) {
@@ -101,13 +101,30 @@ class PhotoService {
    */
   async getPhotoDetail(params: PhotoDetailParams): Promise<PhotoDetail> {
     try {
+      console.log('=== PHOTO SERVICE getPhotoDetail REQUEST ===');
+      console.log('params:', params);
+      
       const response = await api.post<PhotoDetailResponse>('/photos/detail', params);
       
+      console.log('=== PHOTO SERVICE getPhotoDetail RESPONSE ===');
+      console.log('response.data:', JSON.stringify(response.data, null, 2));
+      console.log('=============================================');
+      
       if (!response.data?.success) {
+        console.error('Photo detail request failed:', response.data);
         throw new Error('Failed to fetch photo detail');
       }
       
-      return response.data.data;
+      const photoDetail = response.data.data;
+      
+      console.log('Extracted photoDetail:', JSON.stringify(photoDetail, null, 2));
+      
+      if (!photoDetail || !photoDetail.id) {
+        console.error('Invalid photo detail structure:', photoDetail);
+        throw new Error('Invalid photo detail response');
+      }
+      
+      return photoDetail;
     } catch (error) {
       console.error('PhotoService.getPhotoDetail error:', error);
       throw error;
@@ -121,7 +138,7 @@ class PhotoService {
     try {
       const formData = new FormData();
       
-      formData.append('photo', {
+      formData.append('image', {
         uri: params.image.uri,
         type: params.image.type || 'image/jpeg',
         name: params.image.name || 'photo.jpg',

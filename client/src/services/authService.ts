@@ -4,7 +4,7 @@
  */
 
 import api from './api';
-import type { User, ApiResponse } from '../types';
+import type { User } from '../types';
 
 /**
  * Auth response containing user and token
@@ -22,16 +22,54 @@ interface UpdateProfileData {
 }
 
 /**
- * Helper to extract data from API response
- * Handles both { data: { user, token } } and { user, token } formats
+ * Helper to extract user from API response
+ * Handles multiple response formats
  */
-function extractData<T>(responseData: any): T {
-  // 如果有嵌套的 data 字段
-  if (responseData?.data !== undefined) {
-    return responseData.data as T;
+function extractUser(responseData: any): User {
+  // Case 1: { success: true, data: { user: {...} } }
+  if (responseData?.data?.user?.id) {
+    return responseData.data.user as User;
   }
-  // 直接返回数据
-  return responseData as T;
+  // Case 2: { success: true, data: {...} } where data IS the user
+  if (responseData?.data?.id && responseData?.data?.email) {
+    return responseData.data as User;
+  }
+  // Case 3: { user: {...} }
+  if (responseData?.user?.id) {
+    return responseData.user as User;
+  }
+  // Case 4: Direct user object
+  if (responseData?.id && responseData?.email) {
+    return responseData as User;
+  }
+  
+  console.error('Unable to extract user from:', responseData);
+  throw new Error('Invalid response: unable to extract user data');
+}
+
+/**
+ * Helper to extract auth response (user + token)
+ */
+function extractAuthResponse(responseData: any): AuthResponse {
+  let user: User;
+  let token: string;
+
+  // Extract from { success: true, data: { user, token } }
+  if (responseData?.data?.token && responseData?.data?.user) {
+    token = responseData.data.token;
+    user = responseData.data.user;
+  }
+  // Extract from { user, token }
+  else if (responseData?.token && responseData?.user) {
+    token = responseData.token;
+    user = responseData.user;
+  }
+  else {
+    console.error('Unable to extract auth response from:', responseData);
+    throw new Error('Invalid response: missing token or user');
+  }
+
+  return { user, token };
 }
 
 /**
@@ -49,17 +87,9 @@ export async function register(
       username,
     });
     
-    // 调试日志
     console.log('Register response.data:', JSON.stringify(response.data, null, 2));
     
-    const data = extractData<AuthResponse>(response.data);
-    
-    if (!data?.token || !data?.user) {
-      console.error('Invalid response structure:', response.data);
-      throw new Error('Invalid response: missing token or user');
-    }
-    
-    return data;
+    return extractAuthResponse(response.data);
   } catch (error) {
     console.error('Register error:', error);
     throw error;
@@ -79,17 +109,9 @@ export async function login(
       password,
     });
     
-    // 调试日志
     console.log('Login response.data:', JSON.stringify(response.data, null, 2));
     
-    const data = extractData<AuthResponse>(response.data);
-    
-    if (!data?.token || !data?.user) {
-      console.error('Invalid response structure:', response.data);
-      throw new Error('Invalid response: missing token or user');
-    }
-    
-    return data;
+    return extractAuthResponse(response.data);
   } catch (error) {
     console.error('Login error:', error);
     throw error;
@@ -105,13 +127,11 @@ export async function getMe(): Promise<User> {
     
     console.log('GetMe response.data:', JSON.stringify(response.data, null, 2));
     
-    const data = extractData<User>(response.data);
+    const user = extractUser(response.data);
     
-    if (!data) {
-      throw new Error('Invalid response: missing user data');
-    }
+    console.log('GetMe extracted user:', JSON.stringify(user, null, 2));
     
-    return data;
+    return user;
   } catch (error) {
     console.error('GetMe error:', error);
     throw error;
@@ -124,8 +144,12 @@ export async function getMe(): Promise<User> {
 export async function updateProfile(data: UpdateProfileData): Promise<User> {
   try {
     const response = await api.post('/auth/profile', data);
-    return extractData<User>(response.data);
+    
+    console.log('UpdateProfile response.data:', JSON.stringify(response.data, null, 2));
+    
+    return extractUser(response.data);
   } catch (error) {
+    console.error('UpdateProfile error:', error);
     throw error;
   }
 }

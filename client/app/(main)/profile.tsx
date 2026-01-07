@@ -1,130 +1,356 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuthStore } from 'src/stores/authStore';
-import { Button, Avatar } from 'src/components/common';
-import theme from 'src/theme';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '@/stores/authStore';
+import { userService } from '@/services/userService';
+import { Photo } from '@/types';
+import { PhotoGrid } from '@/components/common/PhotoGrid';
+
+interface PaginationState {
+  page: number;
+  totalPages: number;
+}
 
 export default function ProfileScreen() {
-  const router = useRouter();
+  // Get user from store - access the actual user object
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/(auth)/welcome' as any);
-  };
+  console.log('=== PROFILE SCREEN DEBUG ===');
+  console.log('Raw user from store:', JSON.stringify(user, null, 2));
+  console.log('============================');
 
-  if (!user) return null;
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 1,
+    totalPages: 1,
+  });
+
+  const LIMIT = 20;
+
+  // Fetch photos
+  const fetchPhotos = useCallback(async (page: number, isRefresh = false) => {
+    try {
+      setFetchError(null);
+      console.log('Fetching photos, page:', page);
+      
+      const response = await userService.getMyPhotos({ page, limit: LIMIT });
+      
+      console.log('=== PROFILE fetchPhotos RESPONSE ===');
+      console.log('data length:', response.data?.length);
+      console.log('pagination:', response.pagination);
+      console.log('====================================');
+
+      const { data, pagination: paginationInfo } = response;
+
+      if (isRefresh) {
+        setPhotos(data || []);
+      } else {
+        setPhotos((prev) => [...prev, ...(data || [])]);
+      }
+
+      setPagination({
+        page,
+        totalPages: paginationInfo?.totalPages || 1,
+      });
+    } catch (error) {
+      console.error('Failed to fetch photos:', error);
+      setFetchError('Failed to load photos');
+      Alert.alert('Error', 'Failed to load photos. Please try again.');
+    }
+  }, []);
+
+  // Calculate if there's more data
+  const hasMore = pagination.page < pagination.totalPages;
+
+  // Initial fetch
+  useEffect(() => {
+    const loadInitialPhotos = async () => {
+      console.log('Loading initial photos...');
+      setLoading(true);
+      await fetchPhotos(1, true);
+      setLoading(false);
+    };
+
+    loadInitialPhotos();
+  }, [fetchPhotos]);
+
+  // Refresh handler
+  const handleRefresh = useCallback(async () => {
+    setLoading(true);
+    await fetchPhotos(1, true);
+    setLoading(false);
+  }, [fetchPhotos]);
+
+  // Load more handler
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    await fetchPhotos(pagination.page + 1);
+    setLoadingMore(false);
+  }, [loadingMore, hasMore, pagination.page, fetchPhotos]);
+
+  // Navigate to photo detail
+  const handlePhotoPress = useCallback((photoId: string) => {
+    router.push(`/photo/${photoId}` as any);
+  }, []);
+
+  // Navigate to upload
+  const handleUploadPress = useCallback(() => {
+    router.push('/upload' as any);
+  }, []);
+
+  // Logout handler
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/login' as any);
+          },
+        },
+      ]
+    );
+  }, [logout]);
+
+  // Render loading state
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
+  // Get display values with fallbacks
+  const displayName = user?.username || 'Unknown User';
+  const displayEmail = user?.email || '';
+  const displayPhotosCount = user?.photosCount ?? photos.length;
+  const avatarInitial = displayName.charAt(0).toUpperCase();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <Avatar 
-              uri={user.avatar || undefined} 
-              name={user.username}
-            />
-          </View>
-          
-          <Text style={styles.username}>{user.username}</Text>
-          <Text style={styles.email}>{user.email}</Text>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{user.photosCount || 0}</Text>
-            <Text style={styles.statLabel}>Contributions</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              {new Date(user.createdAt).getFullYear()}
+    <View style={styles.container}>
+      {/* User Info Header */}
+      <View style={styles.userSection}>
+        <View style={styles.userInfoRow}>
+          {user?.avatar ? (
+            <Image source={{ uri: user.avatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarPlaceholderText}>{avatarInitial}</Text>
+            </View>
+          )}
+          <View style={styles.userDetails}>
+            <Text style={styles.username}>{displayName}</Text>
+            <Text style={styles.email}>{displayEmail}</Text>
+            <Text style={styles.photosCount}>
+              {displayPhotosCount} {displayPhotosCount === 1 ? 'photo' : 'photos'}
             </Text>
-            <Text style={styles.statLabel}>Member Since</Text>
           </View>
+          {/* Refresh Button */}
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="refresh" size={24} color="#007AFF" />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.logoutButtonWrapper}>
-            <Button 
-              title="Logout" 
-              onPress={handleLogout}
-            />
-          </View>
+      {/* Error State */}
+      {fetchError && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{fetchError}</Text>
+          <TouchableOpacity onPress={handleRefresh}>
+            <Text style={styles.retryText}>Tap to retry</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+
+      {/* Photo Grid or Empty State */}
+      {photos.length === 0 && !fetchError ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="images-outline" size={64} color="#CCCCCC" />
+          <Text style={styles.emptyText}>No photos yet</Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={handleUploadPress}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.uploadButtonText}>Upload your first photo</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <PhotoGrid
+          photos={photos}
+          onPhotoPress={handlePhotoPress}
+          onLoadMore={handleLoadMore}
+          isLoading={loadingMore}
+          numColumns={2}
+        />
+      )}
+
+      {/* Logout Button */}
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleLogout}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+        <Text style={styles.logoutButtonText}>Logout</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
   container: {
-    padding: theme.spacing.lg,
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    backgroundColor: '#FFFFFF',
   },
-  avatarContainer: {
-    marginBottom: theme.spacing.md,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  // User Section Styles
+  userSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarPlaceholderText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  userDetails: {
+    flex: 1,
+    marginLeft: 16,
   },
   username: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000000',
   },
   email: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.gray500,
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 2,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
+  photosCount: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 2,
   },
-  statItem: {
-    flex: 1,
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  divider: {
-    width: 1,
-    backgroundColor: theme.colors.border,
+  // Error State
+  errorContainer: {
+    padding: 16,
+    alignItems: 'center',
   },
-  statValue: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
+  errorText: {
+    fontSize: 14,
+    color: '#F44336',
   },
-  statLabel: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.gray500,
-    marginTop: theme.spacing.xs,
+  retryText: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginTop: 8,
   },
-  section: {
-    marginTop: theme.spacing.lg,
+  // Empty State Styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+  emptyText: {
+    fontSize: 18,
+    color: '#666666',
+    marginTop: 16,
+    marginBottom: 24,
   },
-  logoutButtonWrapper: {
-    marginTop: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.error,
-    borderRadius: theme.borderRadius.md,
-    // Add overflow hidden to ensure button corners respect border radius if needed
-    overflow: 'hidden',
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    gap: 8,
+  },
+  uploadButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Logout Button Styles
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 34,
+    backgroundColor: '#FF3B30',
+    paddingVertical: 14,
+    borderRadius: 8,
+    gap: 8,
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

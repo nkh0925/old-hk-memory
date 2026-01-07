@@ -9,7 +9,8 @@ import {
   getMapMarkers,
   getPhotoDetail,
   getNearbyPhotos,
-  deletePhoto 
+  deletePhoto,
+  getMyPhotos
 } from '../controllers/photoController.js';
 
 const router = Router();
@@ -21,6 +22,7 @@ router.post('/detail', getPhotoDetail);
 router.post('/nearby', getNearbyPhotos);
 
 // Protected routes (auth required)
+router.post('/my', auth, getMyPhotos);
 router.post('/upload', auth, uploadSingle, uploadPhoto);
 router.post('/delete', auth, deletePhoto);
 export default router;
