@@ -1,8 +1,13 @@
 ﻿import express from 'express';
 import cors from 'cors';
+import config from './config/index.js';
+import connectDB from './config/db.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 
@@ -40,9 +45,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`Old Hong Kong Memory API running on port ${PORT}`);
+  console.log(`🏮 Old Hong Kong Memory API running on port ${PORT}`);
 });
 
 export default app;
