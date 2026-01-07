@@ -1,8 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
 /**
  * Main tab navigation layout
  * Contains the primary app screens after authentication
