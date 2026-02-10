@@ -38,10 +38,13 @@ const userSchema = new mongoose.Schema(
       },
       default: 'user',
     },
+
+    // ？
     isActive: {
       type: Boolean,
       default: true,
     },
+    
     photosCount: {
       type: Number,
       default: 0,

@@ -13,7 +13,7 @@ const photoSchema = new mongoose.Schema(
       trim: true
     },
 
-    // Photo story/description
+    // Photo story
     story: {
       type: String,
       maxlength: [2000, 'Story cannot exceed 2000 characters'],
@@ -75,19 +75,48 @@ const photoSchema = new mongoose.Schema(
       default: 'unknown'
     },
 
-    // AR video generation data
-    arVideo: {
+    /**
+     * AI-generated video data (Doubao Video Generation)
+     * Stores metadata and status for AI video generation from photo
+     */
+    aiVideo: {
+      // Video generation status
+      status: {
+        type: String,
+        enum: {
+          values: ['none', 'pending', 'processing', 'completed', 'failed'],
+          message: '{VALUE} is not a valid AI video status'
+        },
+        default: 'none'
+      },
+      // Azure Blob Storage URL of generated video
       url: {
         type: String,
         trim: true
       },
-      status: {
+      // Prompt used for video generation (derived from story field)
+      prompt: {
         type: String,
-        enum: ['none', 'pending', 'processing', 'ready', 'failed'],
-        default: 'none'
+        trim: true
       },
+      // Video duration in seconds
+      duration: {
+        type: Number,
+        min: 0
+      },
+      // Doubao task/job ID for tracking generation progress
+      jobId: {
+        type: String,
+        trim: true
+      },
+      // Timestamp when video was successfully generated
       generatedAt: {
         type: Date
+      },
+      // Error message if generation failed
+      error: {
+        type: String,
+        trim: true
       }
     },
 
@@ -118,6 +147,7 @@ photoSchema.index({ districtCode: 1, status: 1 }); // Filter by district and sta
 photoSchema.index({ uploader: 1, createdAt: -1 }); // User's photos sorted by date
 photoSchema.index({ era: 1, status: 1 }); // Filter by era
 photoSchema.index({ status: 1, createdAt: -1 }); // Admin moderation queue
+photoSchema.index({ 'aiVideo.status': 1 }); // Filter by AI video generation status
 
 // Virtual for populate helpers
 photoSchema.virtual('uploaderInfo', {
