@@ -233,3 +233,12 @@ export const pollVideoStatus = async (
 
   return poll();
 };
+
+const videoService = {
+  generateVideo,
+  checkVideoStatus,
+  getVideoUrl,
+  pollVideoStatus,
+};
+
+export default videoService;
