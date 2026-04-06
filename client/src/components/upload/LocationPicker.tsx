@@ -1,5 +1,3 @@
-// src/components/upload/LocationPicker.tsx
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
@@ -65,6 +63,7 @@ interface PlacePrediction {
 interface AutocompleteResponse {
   predictions: PlacePrediction[];
   status: string;
+  error_message?: string;
 }
 
 /**
@@ -89,10 +88,8 @@ interface PlaceDetailsResponse {
 /**
  * Google Maps API Key
  */
-const GOOGLE_MAPS_API_KEY =
-  Constants.expoConfig?.extra?.googleMapsApiKey || 'AIzaSyDIyFwBQ3ISucjCI6b50Z8mwWsw5XW8q78';
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-// 在声明后面添加这段调试代码
 if (__DEV__) {
   console.log('=== GOOGLE MAPS API KEY DEBUG ===');
   console.log('expoConfig:', JSON.stringify(Constants.expoConfig?.extra, null, 2));
@@ -205,7 +202,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
         setSuggestions([]);
         setShowSuggestions(false);
       } else {
-        console.warn('Places API error:', data.status);
+        console.warn('Places API error:', data.status, data.error_message);
         setSuggestions([]);
       }
     } catch (error) {

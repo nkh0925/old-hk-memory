@@ -46,6 +46,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> => {
     try {
+      console.log('🚀 发送请求到:', `${config.baseURL}${config.url}`);
       const token = await getToken();
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;

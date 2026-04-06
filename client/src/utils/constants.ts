@@ -1,17 +1,27 @@
-// Global constants and configuration values
-
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 /* =======================
    API
 ======================= */
 
-export const API_BASE_URL: string =
-  process.env.EXPO_PUBLIC_API_BASE_URL ??
-  (Platform.OS === 'android'
-    ? 'http://10.0.2.2:3000/api/v1'
-    : 'http://localhost:3000/api/v1');
+// 使用 Expo 的推荐方式读取环境变量（更可靠）
+const getApiBaseUrl = (): string => {
+  const expoApiUrl =
+    Constants.expoConfig?.extra?.apiBaseUrl ||
+    Constants.manifest?.extra?.apiBaseUrl;
 
+  if (expoApiUrl) {
+    const cleanUrl = expoApiUrl.replace(/\/$/, '');
+    return cleanUrl.endsWith('/api/v1') ? cleanUrl : `${cleanUrl}/api/v1`;  }
+
+  // 开发环境真机调试必须用这个局域网 IP
+  return Platform.OS === 'android'
+    ? 'http://192.168.2.18:3000/api/v1'   
+    : 'http://localhost:3000/api/v1';
+};
+
+export const API_BASE_URL: string = getApiBaseUrl();
 /* =======================
    Storage
 ======================= */

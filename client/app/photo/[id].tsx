@@ -12,6 +12,8 @@ import {
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePhotoStore } from '@/stores/photoStore';
+import VideoGenerateButton from '@/components/video/VideoGenerateButton';
+import { useSettings } from '@/contexts/SettingsContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,6 +34,7 @@ const formatDate = (dateString: string): string => {
  */
 export default function PhotoDetailScreen(): JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isAiModeEnabled } = useSettings();
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -66,12 +69,6 @@ export default function PhotoDetailScreen(): JSX.Element {
     };
   }, [id]);
 
-  const handleARPress = (): void => {
-    if (id) {
-      router.push(`/ar/${id}` as any);
-    }
-  };
-
   const handleBackPress = (): void => {
     router.back();
   };
@@ -87,6 +84,12 @@ export default function PhotoDetailScreen(): JSX.Element {
     console.log('Image loaded successfully:', currentPhoto?.imageUrl);
     setImageLoading(false);
   };
+
+  const handleVideoStatusChange = (): void => {
+  if (id) {
+    fetchPhotoDetail(id);
+  }
+};
 
   // Loading state
   if (isLoading && !currentPhoto) {
@@ -161,8 +164,6 @@ export default function PhotoDetailScreen(): JSX.Element {
   const district = currentPhoto.district || { name: 'Unknown', code: '' };
   const location = currentPhoto.location || { coordinates: [0, 0], address: '' };
   const uploader = currentPhoto.uploader || { username: 'Unknown', avatar: null };
-  const arVideo = currentPhoto.arVideo;
-  const isARReady = arVideo?.status === 'completed';
 
   return (
     <View style={styles.container}>
@@ -257,18 +258,17 @@ export default function PhotoDetailScreen(): JSX.Element {
             <Text style={styles.uploaderName}>{uploader.username || 'Unknown'}</Text>
           </View>
 
-          {/* AR Button */}
-          {isARReady && (
-            <TouchableOpacity
-              style={styles.arButton}
-              onPress={handleARPress}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="cube-outline" size={24} color="#FFF" />
-              <Text style={styles.arButtonText}>View in AR</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+          {/* PROGRESSIVE DISCLOSURE: Conditionally render AI features */}
+          {isAiModeEnabled && (
+            <View style={styles.videoButtonContainer}>
+              <VideoGenerateButton
+                photoId={currentPhoto.id}
+                aiVideo={currentPhoto.aiVideo || { status: 'none' }}
+                onStatusChange={handleVideoStatusChange}
+              />
+            </View>
+          )}        
+          </View>
       </ScrollView>
     </View>
   );
@@ -418,21 +418,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
-  arButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FF9800',
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  arButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
   debugContainer: {
     marginTop: 24,
     padding: 12,
@@ -448,5 +433,9 @@ const styles = StyleSheet.create({
   debugText: {
     fontSize: 10,
     color: '#999',
+  },
+    videoButtonContainer: {
+    marginTop: 20,
+    marginBottom: 16,
   },
 });

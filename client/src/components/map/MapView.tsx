@@ -157,13 +157,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(
               <View style={styles.markerContainer}>
                 <Image
                   source={{ uri: marker.thumbnailUrl }}
-                  style={[
-                    styles.markerImage,
-                    marker.hasArVideo && styles.markerImageWithAr,
-                  ]}
+                  style={styles.markerImage}
                   resizeMode="cover"
                 />
-                {marker.hasArVideo && <View style={styles.arIndicator} />}
               </View>
             </Marker>
           );
@@ -225,21 +221,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
     backgroundColor: '#E0E0E0',
-  },
-  markerImageWithAr: {
-    borderColor: '#FF6B35',
-    borderWidth: 3,
-  },
-  arIndicator: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF6B35',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
 });
 

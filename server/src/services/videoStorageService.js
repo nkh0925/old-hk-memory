@@ -105,11 +105,16 @@ export const downloadAndUploadVideo = async (doubaoVideoUrl, photoId) => {
         url: doubaoVideoUrl,
         responseType: 'stream',
         timeout: DOWNLOAD_TIMEOUT,
-        maxContentLength: MAX_VIDEO_SIZE,
-        maxBodyLength: MAX_VIDEO_SIZE
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          'Accept': 'video/mp4,video/*;q=0.9,*/*;q=0.8'
+        },
+        maxRedirects: 5 // 允许跟随重定向
       });
     } catch (error) {
-      // Handle download errors
+      // 打印完整的原始错误，防止 message 为空的情况
+      console.error('Axios Download Raw Error:', error.message || error.code || 'Unknown stream error');
+      
       if (error.code === 'ECONNABORTED') {
         return {
           success: false,
@@ -120,22 +125,12 @@ export const downloadAndUploadVideo = async (doubaoVideoUrl, photoId) => {
         };
       }
       
-      if (error.code === 'ERR_BAD_REQUEST' && error.response?.status === 404) {
+      if (error.response && error.response.status === 404) {
         return {
           success: false,
           error: {
             code: 'VIDEO_NOT_FOUND',
-            message: 'Video not found at Doubao URL (may have expired)'
-          }
-        };
-      }
-      
-      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-        return {
-          success: false,
-          error: {
-            code: 'NETWORK_ERROR',
-            message: 'Network error: Unable to connect to Doubao server'
+            message: 'Video not found at URL'
           }
         };
       }
@@ -144,7 +139,7 @@ export const downloadAndUploadVideo = async (doubaoVideoUrl, photoId) => {
         success: false,
         error: {
           code: 'DOWNLOAD_FAILED',
-          message: `Failed to download video: ${error.message}`
+          message: `Failed to download video: ${error.message || error.code || 'Connection reset by peer'}`
         }
       };
     }
@@ -165,12 +160,12 @@ export const downloadAndUploadVideo = async (doubaoVideoUrl, photoId) => {
       };
     }
     
-    console.log(`✅ Video downloaded (${(contentLength / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(`Video downloaded (${(contentLength / 1024 / 1024).toFixed(2)}MB)`);
     
     // Generate unique filename
     const filename = generateVideoFilename(photoId);
     
-    console.log(`☁️  Uploading to Azure Blob Storage: ${filename}...`);
+    console.log(`Uploading to Azure Blob Storage: ${filename}...`);
     
     // Get blob service client
     const blobServiceClient = getBlobServiceClient();

@@ -19,9 +19,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oldhkmemory.app",
-      "config": {
-        "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
-      },
+      "config": {},
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture memories of old Hong Kong.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to share Hong Kong memories.",
@@ -36,7 +34,7 @@
       "package": "com.oldhkmemory.app",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDIyFwBQ3ISucjCI6b50Z8mwWsw5XW8q78"
+          "apiKey": "AIzaSyCoLQzsn215NtoppZAFW_zSTZIV9-nOa9Q"
         }
       },
       "permissions": [
@@ -44,7 +42,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -75,6 +74,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "dc9420e5-d357-41c6-95b4-1f4094bb06a3"
+      }
     }
   }
 }

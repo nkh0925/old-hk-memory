@@ -6,6 +6,9 @@ import { useAuthStore } from 'src/stores/authStore';
 import { Loading } from 'src/components/common';
 import Theme from 'src/theme';
 
+import { SettingsProvider } from 'src/contexts/SettingsContext';
+import { GlobalProximityTracker } from '@/components/ai/GlobalProximityTracker';
+
 export default function RootLayout() {
   const initialize = useAuthStore((state) => state.initialize);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -23,10 +26,11 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <SettingsProvider>
       <StatusBar style="dark" />
+      <GlobalProximityTracker />
       <Slot />
-    </>
+    </SettingsProvider>
   );
 }
 

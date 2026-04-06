@@ -14,9 +14,9 @@ export type Coordinates = [number, number];
 export type Era = '1950s' | '1960s' | '1970s' | '1980s' | '1990s' | '2000s' | 'unknown';
 
 /**
- * AR video processing status
+ * AI Video generation status (replaces previous AR video)
  */
-export type ArVideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type VideoStatus = 'none' | 'pending' | 'processing' | 'completed' | 'failed';
 
 /**
  * Location information for a photo
@@ -51,13 +51,15 @@ export interface PhotoUploader {
 }
 
 /**
- * AR video information
+ * AI-generated video information
  */
-export interface ArVideo {
-  /** Video URL */
-  url: string;
-  /** Processing status */
-  status: ArVideoStatus;
+export interface AiVideo {
+  /** Video generation status */
+  status: VideoStatus;
+  /** Video URL (available when status is 'completed') */
+  url?: string;
+  /** Optional error message when generation failed */
+  error?: string;
 }
 
 /**
@@ -80,8 +82,8 @@ export interface Photo {
   uploader: PhotoUploader;
   /** Optional era/time period */
   era?: Era;
-  /** Whether AR video is available */
-  hasArVideo: boolean;
+  /** AI video information */
+  aiVideo: AiVideo;
   /** View count */
   viewCount: number;
   /** Creation timestamp (ISO string) */
@@ -98,8 +100,6 @@ export interface PhotoMarker {
   coordinates: Coordinates;
   /** Thumbnail URL for marker popup */
   thumbnailUrl: string;
-  /** Whether AR video is available */
-  hasArVideo: boolean;
 }
 
 /**
@@ -114,18 +114,17 @@ export interface NearbyPhoto {
   story?: string;
   /** Distance from query point in meters */
   distance: number;
-  /** Optional AR video information */
-  arVideo?: ArVideo;
+  /** AI video information */
+  aiVideo?: AiVideo;
   /** Uploader information (minimal) */
   uploader: Pick<PhotoUploader, 'username'>;
 }
 
 /**
- * Full photo detail including AR video
+ * Full photo detail 
  */
 export interface PhotoDetail extends Photo {
-  /** AR video information (if available) */
-  arVideo?: ArVideo;
+  // No additional fields needed (aiVideo is already in base Photo)
 }
 
 // ============================================================
