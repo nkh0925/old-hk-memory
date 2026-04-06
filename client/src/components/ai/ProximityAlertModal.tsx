@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Modal, 
   View, 
@@ -7,7 +7,10 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   ScrollView,
-  SafeAreaView
+  SafeAreaView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import theme from 'src/theme';
@@ -25,15 +28,36 @@ export interface ProximityAlertModalProps {
   photo: PhotoDetails | null;
   distance: number; // in meters
   onClose: () => void;
+  onGenerateCustomVideo?: (prompt: string) => void; 
 }
+
+type TabType = 'original' | 'custom';
 
 export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
   visible,
   photo,
   distance,
   onClose,
+  onGenerateCustomVideo,
 }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('original');
+  const [customPrompt, setCustomPrompt] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setActiveTab('original');
+      setCustomPrompt('');
+    }
+  }, [visible]);
+
   if (!photo) return null;
+
+  const handleGenerateCustom = () => {
+    if (customPrompt.trim().length === 0) return;
+    if (onGenerateCustomVideo) {
+      onGenerateCustomVideo(customPrompt.trim());
+    }
+  };
 
   return (
     <Modal
@@ -42,9 +66,13 @@ export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView 
+        style={styles.overlay} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.card}>
+            
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerTextContainer}>
@@ -58,7 +86,11 @@ export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollContent}>
+            <ScrollView 
+              showsVerticalScrollIndicator={false} 
+              style={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Image */}
               <Image 
                 source={{ uri: photo.imageUrl }} 
@@ -66,32 +98,86 @@ export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
                 resizeMode="cover"
               />
 
-              {/* Story Content */}
-              <View style={styles.contentContainer}>
-                <Text style={styles.storyTitle}>{photo.title || 'Historical Memory'}</Text>
-                <Text style={styles.storyText}>
-                  {photo.story || 'A piece of history resides here. Explore the past and uncover the hidden stories of old Hong Kong.'}
-                </Text>
+              {/* Title */}
+              <Text style={styles.storyTitle}>{photo.title || 'Historical Memory'}</Text>
+
+              {/* Tab Switcher UI */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity 
+                  style={[styles.tab, activeTab === 'original' && styles.activeTab]}
+                  onPress={() => setActiveTab('original')}
+                >
+                  <Text style={[styles.tabText, activeTab === 'original' && styles.activeTabText]}>
+                    Original Memory
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.tab, activeTab === 'custom' && styles.activeTab]}
+                  onPress={() => setActiveTab('custom')}
+                >
+                  <Text style={[styles.tabText, activeTab === 'custom' && styles.activeTabText]}>
+                    My Recreation
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Tab Content */}
+              <View style={styles.tabContentContainer}>
+                {activeTab === 'original' ? (
+                  <View style={styles.originalTrack}>
+                    <Text style={styles.storyText}>
+                      {photo.story || 'A piece of history resides here. Explore the past and uncover the hidden stories of old Hong Kong.'}
+                    </Text>
+                    
+                    <TouchableOpacity style={styles.playOriginalButton}>
+                      <Ionicons name="play-circle" size={24} color={theme.colors.white} style={styles.buttonIcon} />
+                      <Text style={styles.primaryButtonText}>Play Historical AI Video</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.customTrack}>
+                    {/* 注释已经移到了合法的位置 */}
+                    <Text style={styles.customInstruction}>
+                      Use your imagination! Describe what you would see if you were standing here decades ago, and let AI bring it to life.
+                    </Text>
+                    
+                    <TextInput
+                      style={styles.textInput}
+                      multiline={true}
+                      placeholder="e.g., Crowded streets with neon signs, people wearing traditional clothes..."
+                      placeholderTextColor={theme.colors.gray500}
+                      value={customPrompt}
+                      onChangeText={setCustomPrompt}
+                      textAlignVertical="top"
+                    />
+
+                    <TouchableOpacity 
+                      style={[
+                        styles.generateCustomButton, 
+                        customPrompt.trim().length === 0 && styles.disabledButton
+                      ]}
+                      onPress={handleGenerateCustom}
+                      disabled={customPrompt.trim().length === 0}
+                    >
+                      <Ionicons name="sparkles" size={20} color={theme.colors.white} style={styles.buttonIcon} />
+                      <Text style={styles.primaryButtonText}>✨ Generate My Memory</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </ScrollView>
 
-            {/* Action Placeholder */}
+            {/* Footer */}
             <View style={styles.footer}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="sparkles" size={20} color={theme.colors.white} style={styles.buttonIcon} />
-                <Text style={styles.actionButtonText}>
-                  AI Features (Coming in Task 12)
-                </Text>
-              </TouchableOpacity>
-              
               <TouchableOpacity style={styles.dismissButton} onPress={onClose}>
-                <Text style={styles.dismissButtonText}>Not Now</Text>
+                <Text style={styles.dismissButtonText}>Dismiss</Text>
               </TouchableOpacity>
             </View>
 
           </View>
         </SafeAreaView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -100,17 +186,18 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end', // Aligns the card to the bottom
+    justifyContent: 'flex-end',
   },
   safeArea: {
     width: '100%',
-    maxHeight: '85%', // Prevent it from covering the entire screen
+    maxHeight: '90%',
   },
   card: {
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: theme.borderRadius.lg * 2,
     borderTopRightRadius: theme.borderRadius.lg * 2,
-    padding: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
     flexShrink: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -145,50 +232,118 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexShrink: 1,
-    marginBottom: theme.spacing.md,
   },
   image: {
     width: '100%',
-    height: 200,
+    height: 180,
     borderRadius: theme.borderRadius.lg,
     marginBottom: theme.spacing.md,
     backgroundColor: theme.colors.gray200,
-  },
-  contentContainer: {
-    paddingBottom: theme.spacing.sm,
   },
   storyTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  
+  // Tab Styles
+  tabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray200,
+    marginBottom: theme.spacing.md,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: theme.colors.primary,
+  },
+  tabText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.gray500,
+  },
+  activeTabText: {
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.bold,
+  },
+  
+  // Content Styles
+  tabContentContainer: {
+    paddingBottom: theme.spacing.md,
+    minHeight: 180,
+  },
+  originalTrack: {
+    flex: 1,
   },
   storyText: {
     fontSize: theme.fontSize.md,
     lineHeight: 24,
     color: theme.colors.text,
+    marginBottom: theme.spacing.lg,
   },
-  footer: {
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray200,
+  playOriginalButton: {
+    backgroundColor: theme.colors.text,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: theme.borderRadius.md,
   },
-  actionButton: {
+  
+  customTrack: {
+    flex: 1,
+  },
+  customInstruction: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.gray500,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 20,
+  },
+  textInput: {
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    minHeight: 100,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  generateCustomButton: {
     backgroundColor: theme.colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
+  },
+  disabledButton: {
+    backgroundColor: theme.colors.gray500,
+    opacity: 0.7,
   },
   buttonIcon: {
     marginRight: 8,
   },
-  actionButtonText: {
+  primaryButtonText: {
     color: theme.colors.white,
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.bold,
+  },
+  
+  // Footer
+  footer: {
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray200,
+    backgroundColor: theme.colors.background,
   },
   dismissButton: {
     paddingVertical: 12,

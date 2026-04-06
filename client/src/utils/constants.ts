@@ -17,7 +17,7 @@ const getApiBaseUrl = (): string => {
 
   // 开发环境真机调试必须用这个局域网 IP
   return Platform.OS === 'android'
-    ? 'http://192.168.2.18:3000/api/v1'   
+    ? 'http://192.168.0.103:3000/api/v1'   
     : 'http://localhost:3000/api/v1';
 };
 
