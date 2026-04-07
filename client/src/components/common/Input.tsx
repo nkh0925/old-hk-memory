@@ -1,6 +1,7 @@
 /**
  * Input component
  * Text input with label, error state, and various configurations
+ * Optimized for Modern Archive style (minimalist nostalgia - bottom line only)
  */
 
 import React, { useState } from 'react';
@@ -13,7 +14,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors, spacing, fontSize, borderRadius } from '../../theme';
+import theme from '../../theme';   // 使用优化后的完整 theme
 
 interface InputProps {
   label?: string;
@@ -63,7 +64,7 @@ const Input: React.FC<InputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.gray500}
+          placeholderTextColor={theme.colors.gray500}
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -81,45 +82,47 @@ const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: theme.spacing.md,
   },
   label: {
-    fontSize: fontSize.md,
-    fontWeight: '500',
-    color: colors.text,
-    marginBottom: spacing.xs,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+    fontFamily: theme.fonts.title,   // Serif for archival label
   },
   inputContainer: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.white,
+    borderBottomWidth: 1,              // 只保留底边框，旧表格风格
+    borderBottomColor: theme.colors.border,
+    backgroundColor: 'transparent',    // 无背景框，更纸质
   },
   inputContainer_focused: {
-    borderColor: colors.primary,
-    borderWidth: 2,
+    borderBottomColor: theme.colors.primary,   // Heritage Green
+    borderBottomWidth: 2,
   },
   inputContainer_error: {
-    borderColor: colors.error,
+    borderBottomColor: theme.colors.error,     // Stamp Red
   },
   inputContainer_multiline: {
     minHeight: 100,
   },
   input: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: fontSize.lg,
-    color: colors.text,
+    paddingHorizontal: 0,              // 无左右内边框
+    paddingVertical: theme.spacing.sm,
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.text,
     minHeight: 48,
+    fontFamily: theme.fonts.body,      // 正文保持清晰
   },
   input_multiline: {
     minHeight: 100,
-    paddingTop: spacing.sm,
+    paddingTop: theme.spacing.sm,
   },
   errorText: {
-    fontSize: fontSize.sm,
-    color: colors.error,
-    marginTop: spacing.xs,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.error,
+    marginTop: theme.spacing.xs,
+    fontFamily: theme.fonts.body,
   },
 });
 

@@ -1,11 +1,12 @@
 /**
  * ErrorMessage component
  * Displays error message with optional retry action
+ * Optimized for Modern Archive style (minimalist nostalgia - stamp-like)
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, fontSize, borderRadius } from '../../theme';
+import theme from '../../theme';   // 使用优化后的完整 theme
 import Button from './Button';
 
 interface ErrorMessageProps {
@@ -39,32 +40,39 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
-    backgroundColor: colors.background,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,   // Paper White
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
   },
   iconContainer: {
     width: 64,
     height: 64,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.gray100,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.background,
+    borderWidth: 2,
+    borderColor: theme.colors.error,   // Stamp Red border
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: theme.spacing.md,
   },
   icon: {
     fontSize: 32,
-    fontWeight: '700',
-    color: colors.error,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.error,         // Stamp Red
+    fontFamily: theme.fonts.title,     // Serif
   },
   message: {
-    fontSize: fontSize.lg,
-    color: colors.text,
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.text,
     textAlign: 'center',
-    marginBottom: spacing.md,
-    lineHeight: 24,
+    marginBottom: theme.spacing.md,
+    lineHeight: 26,
+    fontFamily: theme.fonts.title,     // Serif for archival feel
   },
   buttonContainer: {
-    marginTop: spacing.sm,
+    marginTop: theme.spacing.sm,
   },
 });
 

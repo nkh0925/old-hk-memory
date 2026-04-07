@@ -108,7 +108,7 @@ export default function MapPage(): React.JSX.Element {
     <View style={styles.container}>
       {/* Archive Header - 轻量标题，增强主题感 */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Hong Kong Memory Archive</Text>
+        <Text style={styles.headerTitle}>Hong Kong Memory</Text>
       </View>
 
       {/* Map View - 核心区域 */}

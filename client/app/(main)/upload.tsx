@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import UploadForm, { UploadFormData } from '../../src/components/upload/UploadForm';
 import { usePhotoStore } from '../../src/stores/photoStore';
@@ -77,12 +76,13 @@ export default function UploadScreen(): React.JSX.Element {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Upload Photo</Text>
       </View>
+
       <UploadForm onSubmit={handleSubmit} isLoading={isLoading} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -93,14 +93,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 8, 
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
     backgroundColor: theme.colors.background,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
-    fontFamily: theme.fonts.title,   // Serif
+    fontFamily: theme.fonts.title, 
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary,
     textAlign: 'center',

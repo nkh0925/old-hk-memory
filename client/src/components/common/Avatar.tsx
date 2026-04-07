@@ -1,6 +1,7 @@
 /**
  * Avatar component
  * User avatar with image or fallback initials
+ * Optimized for Modern Archive style (minimalist nostalgia)
  */
 
 import React from 'react';
@@ -8,12 +9,11 @@ import {
   View,
   Text,
   Image,
-//   StyleSheet,
   ImageStyle,
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors, fontSize } from '../../theme';
+import theme from '../../theme';   // 使用优化后的完整 theme
 
 type AvatarSize = 'sm' | 'md' | 'lg';
 
@@ -30,9 +30,9 @@ const sizeMap: Record<AvatarSize, number> = {
 };
 
 const fontSizeMap: Record<AvatarSize, number> = {
-  sm: fontSize.sm,
-  md: fontSize.lg,
-  lg: fontSize.xxl,
+  sm: theme.fontSize.sm,
+  md: theme.fontSize.lg,
+  lg: theme.fontSize.xxl,
 };
 
 /**
@@ -62,7 +62,9 @@ const Avatar: React.FC<AvatarProps> = ({
       width: dimension,
       height: dimension,
       borderRadius: dimension / 2,
-      backgroundColor: colors.gray200,
+      backgroundColor: theme.colors.gray100,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     };
 
     return (
@@ -80,15 +82,18 @@ const Avatar: React.FC<AvatarProps> = ({
     width: dimension,
     height: dimension,
     borderRadius: dimension / 2,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.colors.primary,   // Heritage Green
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   };
 
   const textStyle: TextStyle = {
     fontSize: textSize,
-    color: colors.white,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontWeight: theme.fontWeight.semibold,
+    fontFamily: theme.fonts.title,   // Serif for archival feel
   };
 
   return (

@@ -1,6 +1,7 @@
 /**
  * Button component
  * Customizable button with multiple variants and states
+ * Optimized for Modern Archive style (minimalist nostalgia)
  */
 
 import React from 'react';
@@ -13,7 +14,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors, spacing, fontSize, borderRadius } from '../../theme';
+import theme from '../../theme';   // 使用优化后的完整 theme
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -79,8 +80,8 @@ const Button: React.FC<ButtonProps> = ({
 
   const spinnerColor =
     variant === 'outline' || variant === 'ghost'
-      ? colors.primary
-      : colors.white;
+      ? theme.colors.primary
+      : '#FFFFFF';
 
   return (
     <TouchableOpacity
@@ -98,69 +99,69 @@ const Button: React.FC<ButtonProps> = ({
   );
 };
 
-// Variant styles mapping
+// Variant styles mapping (Modern Archive colors)
 const variantStyles: Record<ButtonVariant, ViewStyle> = {
   primary: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.colors.primary,   // Heritage Green
   },
   secondary: {
-    backgroundColor: colors.secondary,
+    backgroundColor: theme.colors.secondary,
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: theme.colors.primary,
   },
   ghost: {
     backgroundColor: 'transparent',
   },
 };
 
-// Size styles mapping
+// Size styles mapping (unchanged spacing)
 const sizeStyles: Record<ButtonSize, ViewStyle> = {
   sm: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     minHeight: 32,
   },
   md: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
     minHeight: 44,
   },
   lg: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     minHeight: 56,
   },
 };
 
-// Text variant styles mapping
+// Text variant styles
 const textVariantStyles: Record<ButtonVariant, TextStyle> = {
   primary: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   secondary: {
-    color: colors.white,
+    color: '#FFFFFF',
   },
   outline: {
-    color: colors.primary,
+    color: theme.colors.primary,
   },
   ghost: {
-    color: colors.primary,
+    color: theme.colors.primary,
   },
 };
 
-// Text size styles mapping
+// Text size styles
 const textSizeStyles: Record<ButtonSize, TextStyle> = {
   sm: {
-    fontSize: fontSize.sm,
+    fontSize: theme.fontSize.sm,
   },
   md: {
-    fontSize: fontSize.md,
+    fontSize: theme.fontSize.md,
   },
   lg: {
-    fontSize: fontSize.lg,
+    fontSize: theme.fontSize.lg,
   },
 };
 
@@ -168,26 +169,27 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.md,
+    borderRadius: theme.borderRadius.sm,   // 微圆角，更方正档案感
   },
   fullWidth: {
     width: '100%',
   },
   container_disabled: {
-    backgroundColor: colors.gray200,
+    backgroundColor: theme.colors.gray200,
   },
   container_outline_disabled: {
     backgroundColor: 'transparent',
-    borderColor: colors.gray200,
+    borderColor: theme.colors.gray200,
   },
   container_ghost_disabled: {
     backgroundColor: 'transparent',
   },
   text: {
-    fontWeight: '600',
+    fontWeight: theme.fontWeight.semibold,
+    fontFamily: theme.fonts.title,   // Serif for archival title feel
   },
   text_disabled: {
-    color: colors.gray500,
+    color: theme.colors.gray500,
   },
 });
 

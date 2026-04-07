@@ -36,6 +36,7 @@ interface AuthStore {
   register: (email: string, password: string, username: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (data: { username?: string; avatar?: string }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -228,6 +229,36 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
         error: getErrorMessage(error),
       });
+    }
+  },
+
+  updateProfile: async (data: { username?: string; avatar?: string }): Promise<void> => {
+    try {
+      set({ isLoading: true, error: null });
+
+      const currentUser = get().user;
+      if (!currentUser) throw new Error('No user logged in');
+
+      const updatedUser: User = {
+        ...currentUser,
+        username: data.username || currentUser.username,
+        avatar: data.avatar || currentUser.avatar,
+      };
+
+      await setUser(updatedUser);
+
+      set({
+        user: updatedUser,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      set({
+        isLoading: false,
+        error: getErrorMessage(error),
+      });
+      throw error;
     }
   },
 
