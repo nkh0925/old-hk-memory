@@ -81,7 +81,8 @@
       },
       "eas": {
         "projectId": "dc9420e5-d357-41c6-95b4-1f4094bb06a3"
-      }
+      },
+      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCoLQzsn215NtoppZAFW_zSTZIV9-nOa9Q"
     }
   }
 }

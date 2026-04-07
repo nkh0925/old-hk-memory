@@ -2,8 +2,9 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useNearbyDetection, PhotoLocation } from 'src/hooks/useNearbyDetection';
 import { usePhotoStore } from 'src/stores/photoStore';
-import { useAuthStore } from 'src/stores/authStore'; // 🌟 引入鉴权 Store
+import { useAuthStore } from 'src/stores/authStore';
 import { ProximityAlertModal, PhotoDetails } from './ProximityAlertModal';
+import theme from 'src/theme';
 
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3;
@@ -22,14 +23,14 @@ export const GlobalProximityTracker = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [dismissedPhotoId, setDismissedPhotoId] = useState<string | null>(null);
 
-  // 🌟 1. 获取用户是否已登录的状态
+  // 获取用户是否已登录的状态
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const rawPhotos = usePhotoStore((state) => state.photos || []);
   const fetchPhotos = usePhotoStore((state) => state.fetchPhotos);
   const isLoading = usePhotoStore((state) => state.isLoading);
 
-  // 🌟 2. 防死循环：记录是否已经尝试过拉取
+  // 防死循环：记录是否已经尝试过拉取
   const hasAttemptedFetch = useRef(false);
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export const GlobalProximityTracker = () => {
     photos: mappedPhotos as PhotoLocation[],
     radiusInMeters: 50,
     onEnterProximity: (photo) => {
-      // 🌟 如果没登录，根本不弹窗
+      // 如果没登录，根本不弹窗
       if (!isAuthenticated) return;
       
       if (photo.id !== dismissedPhotoId) {
@@ -96,7 +97,7 @@ export const GlobalProximityTracker = () => {
     }
   };
 
-  // 🌟 如果未登录，直接不渲染任何弹窗 UI
+  // 如果未登录，直接不渲染任何弹窗 UI
   if (!isAuthenticated) {
     return null;
   }

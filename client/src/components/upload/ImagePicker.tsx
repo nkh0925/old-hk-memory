@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import * as ExpoImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, fontSize, borderRadius, fontWeight } from '../../theme';
+import theme from '../../theme';   // 使用优化后的 Modern Archive theme
 
 // ============================================================
 // Types
@@ -193,7 +193,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Processing...</Text>
         </View>
       </View>
@@ -215,7 +215,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
             accessibilityLabel="Remove photo"
             accessibilityRole="button"
           >
-            <Ionicons name="close-circle" size={28} color={colors.white} />
+            <Ionicons name="close-circle" size={28} color={theme.colors.white} />
           </TouchableOpacity>
 
           {/* Change photo button */}
@@ -226,7 +226,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
             accessibilityLabel="Change photo"
             accessibilityRole="button"
           >
-            <Ionicons name="camera" size={16} color={colors.white} />
+            <Ionicons name="camera" size={16} color={theme.colors.white} />
             <Text style={styles.changeButtonText}>Change</Text>
           </TouchableOpacity>
         </View>
@@ -245,7 +245,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({
         accessibilityRole="button"
       >
         <View style={styles.iconContainer}>
-          <Ionicons name="camera-outline" size={48} color={colors.gray500} />
+          <Ionicons name="camera-outline" size={48} color={theme.colors.secondary} />
         </View>
         <Text style={styles.placeholderText}>Tap to select a photo</Text>
         <Text style={styles.placeholderSubtext}>Camera or Gallery</Text>
@@ -265,44 +265,37 @@ const styles = StyleSheet.create({
     maxHeight: 300,
   },
 
-  // Placeholder
+  // Placeholder - 档案式占位
   placeholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.gray100,
-    borderRadius: borderRadius.lg,
-    borderWidth: 2,
-    borderColor: colors.border,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     borderStyle: 'dashed',
   },
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.white,
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
-    // Shadow
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   placeholderText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: colors.text,
-    marginBottom: spacing.xs,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   placeholderSubtext: {
-    fontSize: fontSize.sm,
-    color: colors.gray500,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.secondary,
   },
 
   // Loading
@@ -310,21 +303,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.gray100,
-    borderRadius: borderRadius.lg,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.gray500,
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.secondary,
   },
 
   // Preview
   previewContainer: {
     flex: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: theme.borderRadius.sm,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   preview: {
     width: '100%',
@@ -350,13 +347,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.sm,
   },
   changeButtonText: {
     marginLeft: 4,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.white,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.white,
   },
 });
 

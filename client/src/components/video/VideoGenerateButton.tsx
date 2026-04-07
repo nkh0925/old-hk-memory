@@ -20,6 +20,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import videoService from '../../services/videoService';
 import type { VideoStatusResponse } from '../../services/videoService';
+import theme from 'src/theme';   // 使用优化后的 Modern Archive theme
 
 // ============================================================
 // Types
@@ -137,7 +138,6 @@ const VideoGenerateButton: React.FC<Props> = ({
   };
 
   const handleCloseModal = async () => {
-    // Pause and unload video before closing to free memory
     if (videoRef.current) {
       await videoRef.current.pauseAsync().catch(() => {});
     }
@@ -154,7 +154,6 @@ const VideoGenerateButton: React.FC<Props> = ({
       return;
     }
 
-    // Video is loaded and ready
     if (status.isLoaded && videoLoading) {
       setVideoLoading(false);
     }
@@ -241,7 +240,7 @@ const VideoGenerateButton: React.FC<Props> = ({
   // ── Render ───────────────────────────────────────────────────
   return (
     <View style={styles.wrapper}>
-      {/* ── Main Action Button ── */}
+      {/* Main Action Button */}
       <TouchableOpacity
         style={[
           styles.button,
@@ -262,19 +261,19 @@ const VideoGenerateButton: React.FC<Props> = ({
         <Text style={styles.buttonText}>{config.text}</Text>
       </TouchableOpacity>
 
-      {/* ── Error Message ── */}
+      {/* Error Message */}
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>⚠️ {error}</Text>
         </View>
       )}
 
-      {/* ── Ready Hint ── */}
+      {/* Ready Hint */}
       {currentStatus === 'completed' && videoUrl && (
         <Text style={styles.readyText}>Video is ready to play</Text>
       )}
 
-      {/* ── Video Playback Modal ── */}
+      {/* Video Playback Modal */}
       <Modal
         visible={modalVisible}
         animationType="fade"
@@ -309,7 +308,7 @@ const VideoGenerateButton: React.FC<Props> = ({
           {/* Video Loading Overlay */}
           {videoLoading && !videoError && (
             <View style={styles.videoOverlay}>
-              <ActivityIndicator size="large" color="#FF9800" />
+              <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={styles.videoLoadingText}>Loading video...</Text>
             </View>
           )}
@@ -317,7 +316,7 @@ const VideoGenerateButton: React.FC<Props> = ({
           {/* Video Error State */}
           {videoError && (
             <View style={styles.videoOverlay}>
-              <Ionicons name="alert-circle-outline" size={48} color="#F44336" />
+              <Ionicons name="alert-circle-outline" size={48} color={theme.colors.error} />
               <Text style={styles.videoErrorText}>Failed to load video</Text>
               <TouchableOpacity
                 style={styles.retryVideoButton}
@@ -337,31 +336,33 @@ const VideoGenerateButton: React.FC<Props> = ({
 };
 
 // ============================================================
-// Styles
+// Styles (Modern Archive optimized)
 // ============================================================
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 8,
+    gap: theme.spacing.sm,
   },
 
-  // ── Button ──
+  // Button
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.sm,   // 微圆角，档案感
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   primary: {
-    backgroundColor: '#FF9800',
+    backgroundColor: theme.colors.primary,   // Heritage Green
   },
   success: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#27AE60',   // 保留温和 success 绿，与 theme 协调
   },
   warning: {
-    backgroundColor: '#F44336',
+    backgroundColor: theme.colors.error,     // Stamp Red
   },
   disabled: {
     backgroundColor: '#BDBDBD',
@@ -371,28 +372,29 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    fontFamily: theme.fonts.body,
   },
   spinner: {
     marginRight: 8,
   },
 
-  // ── Feedback ──
+  // Feedback
   errorContainer: {
-    paddingHorizontal: 4,
+    paddingHorizontal: theme.spacing.xs,
   },
   errorText: {
-    fontSize: 13,
-    color: '#F44336',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.error,
   },
   readyText: {
-    fontSize: 12,
-    color: '#4CAF50',
+    fontSize: theme.fontSize.sm,
+    color: '#27AE60',
     textAlign: 'center',
   },
 
-  // ── Modal ──
+  // Modal
   modalContainer: {
     flex: 1,
     backgroundColor: '#000',
@@ -416,7 +418,7 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.6,
   },
 
-  // ── Video Overlay (loading / error) ──
+  // Video Overlay
   videoOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -426,25 +428,25 @@ const styles = StyleSheet.create({
   },
   videoLoadingText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: theme.fontSize.md,
     marginTop: 8,
   },
   videoErrorText: {
-    color: '#F44336',
-    fontSize: 16,
+    color: theme.colors.error,
+    fontSize: theme.fontSize.lg,
     marginTop: 8,
   },
   retryVideoButton: {
     marginTop: 8,
     paddingHorizontal: 24,
     paddingVertical: 10,
-    backgroundColor: '#FF9800',
-    borderRadius: 8,
+    backgroundColor: theme.colors.primary,   // 统一为 Heritage Green
+    borderRadius: theme.borderRadius.sm,
   },
   retryVideoButtonText: {
     color: '#FFF',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
   },
 });
 

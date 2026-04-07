@@ -8,9 +8,7 @@ import { Platform } from 'react-native';
 // 使用 Expo 的推荐方式读取环境变量（更可靠）
 const getApiBaseUrl = (): string => {
   const expoApiUrl =
-    Constants.expoConfig?.extra?.apiBaseUrl ||
-    Constants.manifest?.extra?.apiBaseUrl;
-
+    Constants.expoConfig?.extra?.apiBaseUrl;
   if (expoApiUrl) {
     const cleanUrl = expoApiUrl.replace(/\/$/, '');
     return cleanUrl.endsWith('/api/v1') ? cleanUrl : `${cleanUrl}/api/v1`;  }

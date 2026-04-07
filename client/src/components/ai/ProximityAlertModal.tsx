@@ -101,7 +101,7 @@ export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
               {/* Title */}
               <Text style={styles.storyTitle}>{photo.title || 'Historical Memory'}</Text>
 
-              {/* Tab Switcher UI */}
+              {/* Tab Switcher */}
               <View style={styles.tabContainer}>
                 <TouchableOpacity 
                   style={[styles.tab, activeTab === 'original' && styles.activeTab]}
@@ -137,7 +137,6 @@ export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
                   </View>
                 ) : (
                   <View style={styles.customTrack}>
-                    {/* 注释已经移到了合法的位置 */}
                     <Text style={styles.customInstruction}>
                       Use your imagination! Describe what you would see if you were standing here decades ago, and let AI bring it to life.
                     </Text>
@@ -161,7 +160,7 @@ export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
                       disabled={customPrompt.trim().length === 0}
                     >
                       <Ionicons name="sparkles" size={20} color={theme.colors.white} style={styles.buttonIcon} />
-                      <Text style={styles.primaryButtonText}>✨ Generate My Memory</Text>
+                      <Text style={styles.primaryButtonText}>Generate My Memory</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -194,16 +193,13 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.borderRadius.lg * 2,
-    borderTopRightRadius: theme.borderRadius.lg * 2,
+    borderTopLeftRadius: theme.borderRadius.md,
+    borderTopRightRadius: theme.borderRadius.md,
     paddingTop: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     flexShrink: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   header: {
     flexDirection: 'row',
@@ -216,7 +212,8 @@ const styles = StyleSheet.create({
     paddingRight: theme.spacing.md,
   },
   title: {
-    fontSize: theme.fontSize.lg,
+    fontSize: theme.fontSize.xl,
+    fontFamily: theme.fonts.title,   // Serif 档案标题感
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary,
     marginBottom: 4,
@@ -224,11 +221,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.gray500,
+    lineHeight: 18,
   },
   closeButton: {
     padding: theme.spacing.xs,
     backgroundColor: theme.colors.gray100,
     borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   scrollContent: {
     flexShrink: 1,
@@ -236,12 +236,15 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 180,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.sm,
     marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: theme.colors.gray100,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   storyTitle: {
     fontSize: theme.fontSize.xl,
+    fontFamily: theme.fonts.title,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
@@ -251,7 +254,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray200,
+    borderBottomColor: theme.colors.border,
     marginBottom: theme.spacing.md,
   },
   tab: {
@@ -284,9 +287,10 @@ const styles = StyleSheet.create({
   },
   storyText: {
     fontSize: theme.fontSize.md,
-    lineHeight: 24,
+    lineHeight: 26,
     color: theme.colors.text,
     marginBottom: theme.spacing.lg,
+    fontFamily: theme.fonts.body,
   },
   playOriginalButton: {
     backgroundColor: theme.colors.text,
@@ -294,7 +298,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   
   customTrack: {
@@ -308,14 +314,14 @@ const styles = StyleSheet.create({
   },
   textInput: {
     backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.sm,
     padding: theme.spacing.md,
     fontSize: theme.fontSize.md,
     color: theme.colors.text,
     minHeight: 100,
     marginBottom: theme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: theme.colors.border,
   },
   generateCustomButton: {
     backgroundColor: theme.colors.primary,
@@ -323,7 +329,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   disabledButton: {
     backgroundColor: theme.colors.gray500,
@@ -335,14 +343,14 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: theme.colors.white,
     fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.bold,
+    fontWeight: theme.fontWeight.semibold,
   },
   
   // Footer
   footer: {
     paddingVertical: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray200,
+    borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.background,
   },
   dismissButton: {

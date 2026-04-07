@@ -14,7 +14,7 @@ import MapView, { Marker, MapPressEvent, Region, PROVIDER_GOOGLE } from 'react-n
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, fontSize, borderRadius, fontWeight } from '../../theme';
+import theme from '../../theme';   // 使用优化后的 Modern Archive theme
 
 // ============================================================
 // Types
@@ -88,8 +88,7 @@ interface PlaceDetailsResponse {
 /**
  * Google Maps API Key
  */
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
+const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 if (__DEV__) {
   console.log('=== GOOGLE MAPS API KEY DEBUG ===');
   console.log('expoConfig:', JSON.stringify(Constants.expoConfig?.extra, null, 2));
@@ -146,8 +145,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
   // Refs
   const mapRef = useRef<MapView>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * Center map on location when it changes
    */
@@ -220,12 +218,10 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     (text: string): void => {
       setSearchQuery(text);
 
-      // Clear previous debounce timer
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
 
-      // Set new debounce timer
       debounceRef.current = setTimeout(() => {
         fetchSuggestions(text);
       }, DEBOUNCE_DELAY);
@@ -256,7 +252,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
             address: description,
           });
 
-          // Update search query to show selected address
           setSearchQuery(description);
           setSuggestions([]);
           setShowSuggestions(false);
@@ -321,7 +316,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       const { longitude, latitude } = currentLocation.coords;
       onLocationSelected({ longitude, latitude });
 
-      // Clear search when using GPS
       setSearchQuery('');
       setSuggestions([]);
     } catch (error) {
@@ -349,7 +343,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
         latitude: coordinate.latitude,
       });
 
-      // Clear search when tapping map
       setSearchQuery('');
       setSuggestions([]);
     },
@@ -369,7 +362,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
    * Handle search input blur
    */
   const handleSearchBlur = useCallback((): void => {
-    // Delay hiding to allow tap on suggestion
     setTimeout(() => {
       setShowSuggestions(false);
     }, 200);
@@ -414,14 +406,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           <Ionicons
             name="location-outline"
             size={18}
-            color={colors.gray500}
+            color={theme.colors.secondary}
             style={styles.suggestionIcon}
           />
           <View style={styles.suggestionTextContainer}>
             <Text style={styles.suggestionMainText} numberOfLines={1}>
               {item.structured_formatting.main_text}
             </Text>
-            <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+            <Text style={styles.suggestionsecondary} numberOfLines={1}>
               {item.structured_formatting.secondary_text}
             </Text>
           </View>
@@ -448,13 +440,13 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           <Ionicons
             name="search"
             size={18}
-            color={colors.gray500}
+            color={theme.colors.secondary}
             style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search address..."
-            placeholderTextColor={colors.gray500}
+            placeholderTextColor={theme.colors.secondary}
             value={searchQuery}
             onChangeText={handleSearchChange}
             onFocus={handleSearchFocus}
@@ -466,7 +458,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           {isSearching ? (
             <ActivityIndicator
               size="small"
-              color={colors.primary}
+              color={theme.colors.primary}
               style={styles.searchSpinner}
             />
           ) : searchQuery.length > 0 ? (
@@ -474,7 +466,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
               onPress={handleClearSearch}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="close-circle" size={18} color={colors.gray500} />
+              <Ionicons name="close-circle" size={18} color={theme.colors.secondary} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -514,7 +506,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
                 longitude: location.longitude,
               }}
               title="Selected Location"
-              pinColor={colors.primary}
+              pinColor={theme.colors.primary}
             />
           )}
         </MapView>
@@ -529,9 +521,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           accessibilityRole="button"
         >
           {isLoadingGPS ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : (
-            <Ionicons name="locate" size={20} color={colors.primary} />
+            <Ionicons name="locate" size={20} color={theme.colors.primary} />
           )}
           <Text style={styles.buttonText}>
             {isLoadingGPS ? 'Getting Location...' : 'Use Current Location'}
@@ -549,9 +541,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 const styles = StyleSheet.create({
   container: {
     height: 300,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.sm,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
 
   // Search
@@ -565,49 +559,33 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 8,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    // Shadow for iOS
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   searchIcon: {
-    marginRight: spacing.sm,
+    marginRight: theme.spacing.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: fontSize.md,
-    color: colors.text,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
     padding: 0,
   },
   searchSpinner: {
-    marginLeft: spacing.sm,
+    marginLeft: theme.spacing.sm,
   },
 
   // Suggestions
   suggestionsContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 8,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
     marginTop: 4,
-    // Shadow for iOS
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     overflow: 'hidden',
   },
   suggestionItem: {
@@ -616,25 +594,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: theme.colors.border,
   },
   suggestionItemLast: {
     borderBottomWidth: 0,
   },
   suggestionIcon: {
-    marginRight: spacing.sm,
+    marginRight: theme.spacing.sm,
   },
   suggestionTextContainer: {
     flex: 1,
   },
   suggestionMainText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: colors.text,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
   },
-  suggestionSecondaryText: {
-    fontSize: fontSize.sm,
-    color: colors.gray500,
+  suggestionsecondary: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.secondary,
     marginTop: 2,
   },
 
@@ -642,8 +620,10 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     marginTop: 50,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.sm,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -656,26 +636,18 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 10,
-    borderRadius: 20,
-    // Shadow for iOS
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    // Elevation for Android
-    elevation: 5,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   buttonText: {
-    marginLeft: spacing.sm,
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: colors.text,
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
   },
 });
 

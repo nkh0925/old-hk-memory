@@ -1,5 +1,3 @@
-// src/components/upload/UploadForm.tsx
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
@@ -18,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ImagePicker from './ImagePicker';
 import LocationPicker from './LocationPicker';
 import { useDistrictStore } from '../../stores/districtStore';
-import { colors, spacing, fontSize, borderRadius, fontWeight } from '../../theme';
+import theme from '../../theme';   // 使用优化后的 Modern Archive theme
 import type { Era } from '../../types/photos';
 
 // ============================================================
@@ -154,7 +152,7 @@ function DropdownSelect<T extends string = string>({
             {item.label}
           </Text>
           {isSelected && (
-            <Ionicons name="checkmark" size={20} color={colors.secondary} />
+            <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
           )}
         </TouchableOpacity>
       );
@@ -173,7 +171,8 @@ function DropdownSelect<T extends string = string>({
     <View style={styles.section}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
-style={[styles.dropdownTrigger, !!error && styles.dropdownTriggerError]}        onPress={handleOpenModal}
+        style={[styles.dropdownTrigger, !!error && styles.dropdownTriggerError]}
+        onPress={handleOpenModal}
         activeOpacity={0.7}
       >
         <Text
@@ -185,7 +184,7 @@ style={[styles.dropdownTrigger, !!error && styles.dropdownTriggerError]}        
         >
           {selectedLabel ?? placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={20} color={colors.gray500} />
+        <Ionicons name="chevron-down" size={20} color={theme.colors.secondary} />
       </TouchableOpacity>
       {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -206,7 +205,7 @@ style={[styles.dropdownTrigger, !!error && styles.dropdownTriggerError]}        
                 onPress={handleCloseModal}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="close" size={24} color={colors.gray500} />
+                <Ionicons name="close" size={24} color={theme.colors.secondary} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -340,7 +339,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ onSubmit, isLoading }) => {
       return;
     }
 
-    // TypeScript: at this point we know these are non-null
     const formData: UploadFormData = {
       image: image!,
       longitude: location!.longitude,
@@ -398,7 +396,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onSubmit, isLoading }) => {
         <View style={styles.section}>
           <Text style={styles.label}>District *</Text>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.secondary} />
+            <ActivityIndicator size="small" color={theme.colors.primary} />
             <Text style={styles.loadingText}>Loading districts...</Text>
           </View>
         </View>
@@ -435,7 +433,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onSubmit, isLoading }) => {
         <TextInput
           style={styles.storyInput}
           placeholder="Share the story behind this photo..."
-          placeholderTextColor={colors.gray500}
+          placeholderTextColor={theme.colors.secondary}
           value={story}
           onChangeText={handleStoryChange}
           multiline
@@ -453,7 +451,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onSubmit, isLoading }) => {
         activeOpacity={0.8}
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={colors.white} />
+          <ActivityIndicator size="small" color={theme.colors.white} />
         ) : (
           <Text style={styles.submitButtonText}>Upload Photo</Text>
         )}
@@ -469,19 +467,19 @@ const UploadForm: React.FC<UploadFormProps> = ({ onSubmit, isLoading }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.colors.background,
   },
   contentContainer: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   section: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
     marginBottom: 8,
   },
   labelRow: {
@@ -491,96 +489,90 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   charCount: {
-    fontSize: fontSize.sm,
-    color: colors.gray500,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.secondary,
   },
   pickerContainer: {
     alignItems: 'center',
   },
   coordinatesText: {
-    marginTop: spacing.sm,
-    fontSize: fontSize.sm,
-    color: colors.gray500,
+    marginTop: theme.spacing.sm,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.secondary,
     textAlign: 'center',
   },
   errorText: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.sm,
-    color: colors.error,
+    marginTop: theme.spacing.xs,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.error,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   loadingText: {
-    marginLeft: spacing.sm,
-    fontSize: fontSize.md,
-    color: colors.gray500,
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.secondary,
   },
 
-  // Dropdown Trigger
+  // Dropdown Trigger - 档案式下拉
   dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.md,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 14,
-    borderRadius: borderRadius.md,
+    borderRadius: theme.borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.border,
   },
   dropdownTriggerError: {
-    borderColor: colors.error,
+    borderColor: theme.colors.error,
   },
   dropdownTriggerText: {
     flex: 1,
-    fontSize: fontSize.md,
-    color: colors.text,
-    marginRight: spacing.sm,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    marginRight: theme.spacing.sm,
   },
   dropdownPlaceholder: {
-    color: colors.gray500,
+    color: theme.colors.secondary,
   },
 
-  // Modal
+  // Modal - 档案卡片风格
   backdrop: {
     flex: 1,
-    backgroundColor: colors.overlay,
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: theme.spacing.lg,
   },
   modalContainer: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
     width: '100%',
     maxWidth: 400,
     maxHeight: MAX_MODAL_HEIGHT,
     overflow: 'hidden',
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: theme.colors.border,
   },
   modalTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
 
   // List
@@ -588,61 +580,64 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   listContent: {
-    paddingBottom: spacing.sm,
+    paddingBottom: theme.spacing.sm,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: theme.spacing.md,
   },
   listItemSelected: {
-    backgroundColor: colors.gray100,
+    backgroundColor: theme.colors.gray100,
   },
   listItemText: {
     flex: 1,
-    fontSize: fontSize.md,
-    color: colors.text,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
   },
   listItemTextSelected: {
-    fontWeight: fontWeight.semibold,
-    color: colors.secondary,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginLeft: spacing.md,
+    backgroundColor: theme.colors.border,
+    marginLeft: theme.spacing.md,
   },
 
-  // Story Input
+  // Story Input - 旧表格风格
   storyInput: {
     height: 120,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
     padding: 12,
-    fontSize: fontSize.md,
-    color: colors.text,
-    backgroundColor: colors.white,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.background,
+    textAlignVertical: 'top',
   },
 
-  // Submit Button
+  // Submit Button - Heritage Green 主色
   submitButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 16,
-    borderRadius: borderRadius.md,
+    borderRadius: theme.borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md,
+    marginTop: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.white,
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.white,
   },
 });
 
