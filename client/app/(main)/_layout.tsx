@@ -23,6 +23,7 @@ export default function MainLayout() {
           headerShown: false,
           tabBarStyle: {
             borderTopColor: theme.colors.border,
+            borderTopWidth: 1,
             backgroundColor: theme.colors.background,
             paddingBottom: theme.spacing.xs,
             height: 60,
@@ -30,6 +31,7 @@ export default function MainLayout() {
           tabBarLabelStyle: {
             fontSize: theme.fontSize.sm,
             fontWeight: theme.fontWeight.medium,
+            fontFamily: theme.fonts.body,
           },
         }}
       >
@@ -60,7 +62,6 @@ export default function MainLayout() {
             ),
           }}
         />
-        {/* AI Mode Toggle Button */}
         <Tabs.Screen
           name="ai-settings-trigger"
           listeners={{

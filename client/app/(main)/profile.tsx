@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  RefreshControl,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +17,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { userService } from '@/services/userService';
 import { Photo } from '@/types';
 import { PhotoGrid } from '@/components/common/PhotoGrid';
+import theme from 'src/theme';
 
 interface PaginationState {
   page: number;
@@ -21,38 +25,29 @@ interface PaginationState {
 }
 
 export default function ProfileScreen() {
-  // Get user from store - access the actual user object
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-
-  console.log('=== PROFILE SCREEN DEBUG ===');
-  console.log('Raw user from store:', JSON.stringify(user, null, 2));
-  console.log('============================');
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
     totalPages: 1,
   });
 
+  const [activeTab, setActiveTab] = useState<'photos' | 'videos'>('photos');
+
   const LIMIT = 20;
 
-  // Fetch photos
   const fetchPhotos = useCallback(async (page: number, isRefresh = false) => {
     try {
       setFetchError(null);
-      console.log('Fetching photos, page:', page);
-      
       const response = await userService.getMyPhotos({ page, limit: LIMIT });
-      
-      console.log('=== PROFILE fetchPhotos RESPONSE ===');
-      console.log('data length:', response.data?.length);
-      console.log('pagination:', response.pagination);
-      console.log('====================================');
-
       const { data, pagination: paginationInfo } = response;
 
       if (isRefresh) {
@@ -72,49 +67,36 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  // Calculate if there's more data
   const hasMore = pagination.page < pagination.totalPages;
 
-  // Initial fetch
   useEffect(() => {
-    const loadInitialPhotos = async () => {
-      console.log('Loading initial photos...');
+    const loadInitial = async () => {
       setLoading(true);
       await fetchPhotos(1, true);
       setLoading(false);
     };
-
-    loadInitialPhotos();
+    loadInitial();
   }, [fetchPhotos]);
 
-  // Refresh handler
-  const handleRefresh = useCallback(async () => {
-    setLoading(true);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
     await fetchPhotos(1, true);
-    setLoading(false);
+    setRefreshing(false);
   }, [fetchPhotos]);
 
-  // Load more handler
   const handleLoadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-
+    if (loadingMore || !hasMore || activeTab !== 'photos') return;
     setLoadingMore(true);
     await fetchPhotos(pagination.page + 1);
     setLoadingMore(false);
-  }, [loadingMore, hasMore, pagination.page, fetchPhotos]);
+  }, [loadingMore, hasMore, pagination.page, fetchPhotos, activeTab]);
 
-  // Navigate to photo detail
   const handlePhotoPress = useCallback((photoId: string) => {
     router.push(`/photo/${photoId}` as any);
   }, []);
 
-  // Navigate to upload
-  const handleUploadPress = useCallback(() => {
-    router.push('/upload' as any);
-  }, []);
-
-  // Logout handler
-  const handleLogout = useCallback(() => {
+  const handleLogoutPress = useCallback(() => {
+    setShowMenu(false);
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -132,17 +114,6 @@ export default function ProfileScreen() {
     );
   }, [logout]);
 
-  // Render loading state
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading profile...</Text>
-      </View>
-    );
-  }
-
-  // Get display values with fallbacks
   const displayName = user?.username || 'Unknown User';
   const displayEmail = user?.email || '';
   const displayPhotosCount = user?.photosCount ?? photos.length;
@@ -150,7 +121,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* User Info Header */}
+      {/* User Info Header - 精简档案卡片 */}
       <View style={styles.userSection}>
         <View style={styles.userInfoRow}>
           {user?.avatar ? (
@@ -164,63 +135,105 @@ export default function ProfileScreen() {
             <Text style={styles.username}>{displayName}</Text>
             <Text style={styles.email}>{displayEmail}</Text>
             <Text style={styles.photosCount}>
-              {displayPhotosCount} {displayPhotosCount === 1 ? 'photo' : 'photos'}
+              {displayPhotosCount} photos
             </Text>
           </View>
-          {/* Refresh Button */}
+
+          {/* 右上角三点菜单按钮（仅 Logout） */}
           <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleRefresh}
+            style={styles.menuButton}
+            onPress={() => setShowMenu(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="refresh" size={24} color="#007AFF" />
+            <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Error State */}
-      {fetchError && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{fetchError}</Text>
-          <TouchableOpacity onPress={handleRefresh}>
-            <Text style={styles.retryText}>Tap to retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* TikTok-style Tabs */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'photos' && styles.tabItemActive]}
+          onPress={() => setActiveTab('photos')}
+        >
+          <Text style={[styles.tabText, activeTab === 'photos' && styles.tabTextActive]}>
+            My Photos
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'videos' && styles.tabItemActive]}
+          onPress={() => setActiveTab('videos')}
+        >
+          <Text style={[styles.tabText, activeTab === 'videos' && styles.tabTextActive]}>
+            My AI Videos
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Photo Grid or Empty State */}
-      {photos.length === 0 && !fetchError ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="images-outline" size={64} color="#CCCCCC" />
-          <Text style={styles.emptyText}>No photos yet</Text>
-          <TouchableOpacity
-            style={styles.uploadButton}
-            onPress={handleUploadPress}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.uploadButtonText}>Upload your first photo</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <PhotoGrid
-          photos={photos}
-          onPhotoPress={handlePhotoPress}
-          onLoadMore={handleLoadMore}
-          isLoading={loadingMore}
-          numColumns={2}
-        />
-      )}
-
-      {/* Logout Button */}
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-        activeOpacity={0.8}
+      {/* Content Area - 九宫格形式通过 PhotoGrid 实现 */}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
+        }
+        onScrollEndDrag={handleLoadMore}
+        scrollEventThrottle={16}
       >
-        <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+        {activeTab === 'photos' ? (
+          <>
+            {fetchError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{fetchError}</Text>
+                <TouchableOpacity onPress={onRefresh}>
+                  <Text style={styles.retryText}>Tap to retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <PhotoGrid
+              photos={photos}
+              onPhotoPress={handlePhotoPress}
+              onLoadMore={handleLoadMore}
+              isLoading={loadingMore}
+              numColumns={2}
+            />
+
+            {loadingMore && (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="videocam-outline" size={64} color={theme.colors.gray500} />
+            <Text style={styles.emptyText}>No AI videos yet</Text>
+            <Text style={styles.emptySubText}>AI-generated videos will appear here</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* 右上角菜单 Modal（仅 Logout） */}
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={styles.menuContainer}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleLogoutPress}>
+              <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+              <Text style={[styles.menuText, { color: theme.colors.error }]}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -228,43 +241,33 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.background,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-  },
-  // User Section Styles
   userSection: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: theme.colors.border,
   },
   userInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   avatarPlaceholder: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarPlaceholderText: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: theme.fontWeight.bold,
     color: '#FFFFFF',
   },
   userDetails: {
@@ -272,85 +275,116 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   username: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontSize: 20,
+    fontFamily: theme.fonts.title,   // Serif 怀旧标题
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
   },
   email: {
     fontSize: 14,
-    color: '#666666',
-    marginTop: 2,
+    color: theme.colors.gray500,
+    marginTop: 4,
   },
   photosCount: {
     fontSize: 14,
-    color: '#666666',
-    marginTop: 2,
+    color: theme.colors.gray500,
+    marginTop: 4,
   },
-  refreshButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
+  menuButton: {
+    padding: 8,
+  },
+
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+  },
+  tabItem: {
+    flex: 1,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  // Error State
+  tabItemActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.primary,
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.gray500,
+  },
+  tabTextActive: {
+    color: theme.colors.primary,
+  },
+
+  content: { flex: 1 },
+  contentContainer: { paddingBottom: 40 },
+
   errorContainer: {
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
   },
   errorText: {
     fontSize: 14,
-    color: '#F44336',
+    color: theme.colors.error,
   },
   retryText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: theme.colors.primary,
     marginTop: 8,
   },
-  // Empty State Styles
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    paddingTop: 80,
   },
   emptyText: {
     fontSize: 18,
-    color: '#666666',
+    color: theme.colors.gray500,
     marginTop: 16,
-    marginBottom: 24,
+    marginBottom: 8,
   },
-  uploadButton: {
+  emptySubText: {
+    fontSize: 14,
+    color: theme.colors.gray500,
+    textAlign: 'center',
+  },
+
+  loadingMore: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+
+  /* Menu Modal */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 60,
+    paddingRight: 16,
+  },
+  menuContainer: {
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 4,
+    paddingVertical: 8,
+    width: 180,
+  },
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  uploadButtonText: {
-    color: '#FFFFFF',
+  menuText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  // Logout Button Styles
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 34,
-    backgroundColor: '#FF3B30',
-    paddingVertical: 14,
-    borderRadius: 8,
-    gap: 8,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    color: theme.colors.text,
   },
 });
