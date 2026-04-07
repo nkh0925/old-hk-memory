@@ -16,6 +16,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import theme from 'src/theme';   // 使用优化后的 Modern Archive theme
 
 // ============================================================
 // Types
@@ -181,7 +182,7 @@ const DistrictFilter: React.FC<DistrictFilterProps> = ({
             <Ionicons
               name="checkmark"
               size={20}
-              color="#007AFF"
+              color={theme.colors.primary}
               style={styles.checkIcon}
             />
           )}
@@ -211,7 +212,7 @@ const DistrictFilter: React.FC<DistrictFilterProps> = ({
   if (isLoading) {
     return (
       <View style={styles.triggerButton}>
-        <ActivityIndicator size="small" color="#007AFF" />
+        <ActivityIndicator size="small" color={theme.colors.primary} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -230,7 +231,7 @@ const DistrictFilter: React.FC<DistrictFilterProps> = ({
         <Text style={styles.triggerText} numberOfLines={1}>
           {selectedDisplayText}
         </Text>
-        <Ionicons name="chevron-down" size={20} color="#666666" />
+        <Ionicons name="chevron-down" size={20} color={theme.colors.secondary} />
       </TouchableOpacity>
 
       {/* Dropdown Modal */}
@@ -253,7 +254,7 @@ const DistrictFilter: React.FC<DistrictFilterProps> = ({
                 accessibilityRole="button"
                 accessibilityLabel="Close"
               >
-                <Ionicons name="close" size={24} color="#666666" />
+                <Ionicons name="close" size={24} color={theme.colors.secondary} />
               </TouchableOpacity>
             </View>
 
@@ -282,41 +283,34 @@ DistrictFilter.displayName = 'DistrictFilter';
 // ============================================================
 
 const styles = StyleSheet.create({
-  // Trigger Button
+  // Trigger Button - 档案式触发器
   triggerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.sm,
     minWidth: 160,
-    // Shadow for iOS
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   triggerText: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
-    color: '#333333',
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text,
     marginRight: 8,
+    fontFamily: theme.fonts.body,
   },
   loadingText: {
     fontSize: 15,
-    color: '#666666',
+    color: theme.colors.secondary,
     marginLeft: 8,
   },
 
-  // Modal
+  // Modal - 干净档案卡风格
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -325,22 +319,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
     width: '100%',
     maxWidth: 400,
     maxHeight: MAX_MODAL_HEIGHT,
     overflow: 'hidden',
-    // Shadow for iOS
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    // Elevation for Android
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -348,13 +334,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#333333',
+    fontFamily: theme.fonts.title,   // Serif 档案标题感
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
 
   // List
@@ -371,31 +358,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   listItemSelected: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.gray100,   // 柔和选中背景
   },
   listItemText: {
     flex: 1,
     fontSize: 15,
-    color: '#333333',
+    color: theme.colors.text,
+    fontFamily: theme.fonts.body,
   },
   listItemTextSelected: {
-    fontWeight: '600',
-    color: '#007AFF',
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary,
   },
   listItemCount: {
     fontSize: 14,
-    color: '#888888',
+    color: theme.colors.secondary,
     marginLeft: 8,
   },
   listItemCountSelected: {
-    color: '#007AFF',
+    color: theme.colors.primary,
   },
   checkIcon: {
     marginLeft: 8,
   },
   separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E0E0E0',
+    height: 1,
+    backgroundColor: theme.colors.border,
     marginLeft: 16,
   },
 });

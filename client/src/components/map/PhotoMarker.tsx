@@ -6,6 +6,7 @@
 import React, { useCallback } from 'react';
 import { StyleSheet, View, Image, Text } from 'react-native';
 import { Marker } from 'react-native-maps';
+import theme from 'src/theme';   // 使用优化后的 Modern Archive theme
 
 // ============================================================
 // Types
@@ -44,12 +45,6 @@ const THUMBNAIL_SIZE = 60;
 
 /** Size of the AR badge */
 const BADGE_SIZE = 20;
-
-/** Border radius for circular thumbnail */
-const THUMBNAIL_BORDER_RADIUS = THUMBNAIL_SIZE / 2;
-
-/** Border radius for circular badge */
-const BADGE_BORDER_RADIUS = BADGE_SIZE / 2;
 
 // ============================================================
 // Component
@@ -119,54 +114,36 @@ const styles = StyleSheet.create({
   thumbnailWrapper: {
     width: THUMBNAIL_SIZE,
     height: THUMBNAIL_SIZE,
-    borderRadius: THUMBNAIL_BORDER_RADIUS,
-    // Shadow for iOS
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 5,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 6,                    // 微方角，更像旧照片卡片
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,   // 柔和旧纸边框
+    backgroundColor: theme.colors.background,
   },
   thumbnail: {
     width: THUMBNAIL_SIZE,
     height: THUMBNAIL_SIZE,
-    borderRadius: THUMBNAIL_BORDER_RADIUS,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    backgroundColor: '#E0E0E0',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.gray100,
   },
   arBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: -2,
+    right: -2,
     width: BADGE_SIZE,
     height: BADGE_SIZE,
-    borderRadius: BADGE_BORDER_RADIUS,
-    backgroundColor: '#FFD700',
+    borderRadius: 4,                    // 微方角印章感
+    backgroundColor: theme.colors.error, // Stamp Red
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    // Shadow for iOS
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    // Elevation for Android
-    elevation: 3,
+    borderColor: theme.colors.background,
   },
   arBadgeText: {
     fontSize: 8,
-    fontWeight: '700',
-    color: '#000000',
+    fontWeight: theme.fontWeight.bold,
+    color: '#FFFFFF',                   // 白字清晰对比
     letterSpacing: -0.5,
   },
 });
