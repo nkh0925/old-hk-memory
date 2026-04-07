@@ -134,7 +134,6 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  // ... same styles as previously provided ...
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -150,16 +149,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: theme.fontSize.xxl,
+    fontFamily: theme.fonts.title, // Serif
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
+    color: theme.colors.primary,
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
     fontSize: theme.fontSize.md,
-    color: theme.colors.gray500,
+    color: theme.colors.secondary,
   },
   form: {
     width: '100%',
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 4,
   },
   buttonContainer: {
     marginTop: theme.spacing.lg,

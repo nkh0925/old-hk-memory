@@ -15,7 +15,7 @@ export default function WelcomeScreen() {
         </View>
         
         <Text style={styles.tagline}>
-          Preserving history, one photo at a time.
+          Preserving history, one photo at a time
         </Text>
       </View>
 
@@ -31,7 +31,6 @@ export default function WelcomeScreen() {
           <Button 
             title="Register" 
             onPress={() => router.push('/(auth)/register' as any)} 
-            // Removed 'variant' as it caused type errors
           />
         </View>
       </View>
@@ -53,27 +52,33 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: theme.spacing.md,
     alignItems: 'center',
+    padding: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
+    fontFamily: theme.fonts.title,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary,
     textAlign: 'center',
   },
   tagline: {
     fontSize: 16,
-    color: theme.colors.gray500, // Fixed: textSecondary -> gray500
+    color: theme.colors.secondary,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
+    maxWidth: '80%',
   },
   footer: {
     paddingBottom: 40,
     width: '100%',
   },
   buttonWrapper: {
-    width: '100%', // Handle width here since Button prop failed
+    width: '100%',
   },
   spacer: {
-    height: 12,
+    height: 16,
   },
 });
