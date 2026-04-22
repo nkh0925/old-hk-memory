@@ -13,9 +13,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oldhkmemory.app",
@@ -82,6 +80,7 @@
       "eas": {
         "projectId": "dc9420e5-d357-41c6-95b4-1f4094bb06a3"
       },
+      "apiBaseUrl": "http://10.0.2.2:3000",
       "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCoLQzsn215NtoppZAFW_zSTZIV9-nOa9Q"
     }
   }

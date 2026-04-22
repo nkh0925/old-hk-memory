@@ -62,6 +62,7 @@ export const GlobalProximityTracker = () => {
         aiVideoStatus: photo.aiVideo?.status || 'none',
         imageUrl: photo.imageUrl,
         story: photo.story,
+        uploaderId: photo.uploader?.id || null,
       }));
     return result;
   }, [rawPhotos]);

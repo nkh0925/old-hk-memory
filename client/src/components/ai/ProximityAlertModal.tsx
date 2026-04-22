@@ -1,365 +1,769 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Modal, 
-  View, 
-  Text, 
-  Image, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
   ScrollView,
-  SafeAreaView,
   TextInput,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import theme from 'src/theme';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from 'src/stores/authStore';
+import {
+  generateVideo,
+  checkVideoStatus,
+  checkJobStatus,
+  VideoStatus,
+} from 'src/services/videoService';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PhotoDetails {
   id: string;
   title?: string;
   imageUrl: string;
   story?: string;
-  aiVideoStatus: 'none' | 'pending' | 'processing' | 'completed' | 'failed';
+  aiVideoStatus: VideoStatus;
+  uploaderId?: string | null;
 }
 
-export interface ProximityAlertModalProps {
+interface Props {
   visible: boolean;
   photo: PhotoDetails | null;
-  distance: number; // in meters
+  distance: number;
   onClose: () => void;
-  onGenerateCustomVideo?: (prompt: string) => void; 
 }
 
-type TabType = 'original' | 'custom';
+// ─── Constants ─────────────────────────────────────────────────────────────────
 
-export const ProximityAlertModal: React.FC<ProximityAlertModalProps> = ({
+// Polling interval in ms
+const POLL_INTERVAL = 5000;
+// Max polling attempts (5s × 72 = 6 min)
+const MAX_ATTEMPTS = 72;
+
+// ─── Component ─────────────────────────────────────────────────────────────────
+
+export const ProximityAlertModal: React.FC<Props> = ({
   visible,
   photo,
   distance,
   onClose,
-  onGenerateCustomVideo,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('original');
+  const router = useRouter();
+  const currentUser = useAuthStore((state) => state.user);
+
+  // ── Tab state ──
+  const [activeTab, setActiveTab] = useState<'original' | 'custom'>('original');
+
+  // ── Original Memory state ──
+  // Initialized from photo.aiVideoStatus snapshot, then self-managed
+  const [officialStatus, setOfficialStatus] = useState<VideoStatus>('none');
+  const [officialError, setOfficialError] = useState<string | null>(null);
+  const officialPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const officialAttempts = useRef(0);
+  const isMounted = useRef(false);
+
+  // ── My Recreation state ──
   const [customPrompt, setCustomPrompt] = useState('');
+  const [customStatus, setCustomStatus] = useState<VideoStatus>('none');
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [customJobId, setCustomJobId] = useState<string | null>(null);
+  const customPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const customAttempts = useRef(0);
+
+  // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (visible) {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Reset all state when modal opens with a new photo
+  useEffect(() => {
+    if (visible && photo) {
       setActiveTab('original');
+      setOfficialStatus(photo.aiVideoStatus || 'none');
+      setOfficialError(null);
       setCustomPrompt('');
+      setCustomStatus('none');
+      setCustomError(null);
+      setCustomJobId(null);
+      officialAttempts.current = 0;
+      customAttempts.current = 0;
     }
-  }, [visible]);
 
-  if (!photo) return null;
+    // Clean up polling when modal closes
+    if (!visible) {
+      stopOfficialPolling();
+      stopCustomPolling();
+    }
+  }, [visible, photo?.id]);
 
-  const handleGenerateCustom = () => {
-    if (customPrompt.trim().length === 0) return;
-    if (onGenerateCustomVideo) {
-      onGenerateCustomVideo(customPrompt.trim());
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopOfficialPolling();
+      stopCustomPolling();
+    };
+  }, []);
+
+  // ─── Polling helpers ──────────────────────────────────────────────────────────
+
+  const stopOfficialPolling = () => {
+    if (officialPollTimer.current) {
+      clearInterval(officialPollTimer.current);
+      officialPollTimer.current = null;
     }
   };
 
+  const stopCustomPolling = () => {
+    if (customPollTimer.current) {
+      clearInterval(customPollTimer.current);
+      customPollTimer.current = null;
+    }
+  };
+
+  // ─── Official Memory: Generate ────────────────────────────────────────────────
+
+  const handleGenerateOfficial = async () => {
+    if (!photo) return;
+
+    setOfficialStatus('pending');
+    setOfficialError(null);
+
+    try {
+      await generateVideo(photo.id, undefined, false);
+      startOfficialPolling();
+    } catch (err: any) {
+      if (!isMounted.current) return;
+      setOfficialStatus('failed');
+      setOfficialError(err?.message || 'Failed to start video generation');
+    }
+  };
+
+  const startOfficialPolling = () => {
+    if (!photo) return;
+    stopOfficialPolling();
+    officialAttempts.current = 0;
+
+    officialPollTimer.current = setInterval(async () => {
+      if (!isMounted.current) {
+        stopOfficialPolling();
+        return;
+      }
+
+      officialAttempts.current += 1;
+
+      if (officialAttempts.current > MAX_ATTEMPTS) {
+        stopOfficialPolling();
+        if (isMounted.current) {
+          setOfficialStatus('failed');
+          setOfficialError('Video generation timed out. Please try again.');
+        }
+        return;
+      }
+
+      try {
+        const result = await checkVideoStatus(photo.id);
+        if (!isMounted.current) return;
+
+        setOfficialStatus(result.status);
+
+        if (result.status === 'completed') {
+          stopOfficialPolling();
+        } else if (result.status === 'failed') {
+          stopOfficialPolling();
+          setOfficialError(result.error || 'Video generation failed');
+        }
+      } catch (err: any) {
+        if (!isMounted.current) return;
+        // Network hiccup — keep polling, don't stop
+        console.warn('[ProximityAlertModal] Official poll error:', err?.message);
+      }
+    }, POLL_INTERVAL);
+  };
+
+  // ─── Official Memory: Play ────────────────────────────────────────────────────
+
+  const handlePlayOfficial = () => {
+    if (!photo) return;
+    onClose();
+    // Small delay to let modal close animation finish before navigating
+    setTimeout(() => {
+      router.push(`/photo/${photo.id}?autoPlay=true`);
+    }, 300);
+  };
+
+  // ─── My Recreation: Generate ──────────────────────────────────────────────────
+
+  const handleGenerateCustom = async () => {
+    if (!photo || !customPrompt.trim()) return;
+
+    setCustomStatus('pending');
+    setCustomError(null);
+    setCustomJobId(null);
+
+    try {
+      const result = await generateVideo(photo.id, customPrompt.trim(), true);
+      if (!isMounted.current) return;
+
+      setCustomJobId(result.jobId);
+      setCustomStatus('pending');
+      startCustomPolling(result.jobId);
+    } catch (err: any) {
+      if (!isMounted.current) return;
+      setCustomStatus('failed');
+      setCustomError(err?.message || 'Failed to start video generation');
+    }
+  };
+
+  const startCustomPolling = (jobId: string) => {
+    stopCustomPolling();
+    customAttempts.current = 0;
+
+    customPollTimer.current = setInterval(async () => {
+      if (!isMounted.current) {
+        stopCustomPolling();
+        return;
+      }
+
+      customAttempts.current += 1;
+
+      if (customAttempts.current > MAX_ATTEMPTS) {
+        stopCustomPolling();
+        if (isMounted.current) {
+          setCustomStatus('failed');
+          setCustomError('Video generation timed out. Check Profile → AI Videos later.');
+        }
+        return;
+      }
+
+      try {
+        const result = await checkJobStatus(jobId);
+        if (!isMounted.current) return;
+
+        setCustomStatus(result.status);
+
+        if (result.status === 'completed') {
+          stopCustomPolling();
+        } else if (result.status === 'failed') {
+          stopCustomPolling();
+          setCustomError(result.error || 'Video generation failed');
+        }
+      } catch (err: any) {
+        if (!isMounted.current) return;
+        // Network hiccup — keep polling, don't stop
+        console.warn('[ProximityAlertModal] Custom poll error:', err?.message);
+      }
+    }, POLL_INTERVAL);
+  };
+
+  // ─── My Recreation: Go to Profile ─────────────────────────────────────────────
+
+  const handleGoToProfile = () => {
+    onClose();
+    setTimeout(() => {
+      router.push({
+        pathname: '/(main)/profile',
+        params: { tab: 'videos' },
+      });
+    }, 300);
+  };
+
+  // ─── Derived ──────────────────────────────────────────────────────────────────
+
+const isUploader =
+  !!photo?.uploaderId &&
+  !!currentUser?.id &&
+  photo.uploaderId === currentUser.id;
+
+  const formattedDistance = distance < 1000
+    ? `${Math.round(distance)}m`
+    : `${(distance / 1000).toFixed(1)}km`;
+
+  // ─── Render helpers ───────────────────────────────────────────────────────────
+
+  const renderOfficialTab = () => {
+    // completed — anyone can play
+    if (officialStatus === 'completed') {
+      return (
+        <View style={styles.tabContent}>
+          {photo?.story ? (
+            <Text style={styles.storyText}>{photo.story}</Text>
+          ) : (
+            <Text style={styles.placeholderText}>No story available for this photo.</Text>
+          )}
+          <TouchableOpacity style={styles.primaryButton} onPress={handlePlayOfficial}>
+            <Ionicons name="play-circle-outline" size={20} color="#fff" />
+            <Text style={styles.primaryButtonText}>Play Historical AI Video</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // pending / processing — show spinner to everyone
+    if (officialStatus === 'pending' || officialStatus === 'processing') {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#6366f1" />
+            <Text style={styles.loadingText}>
+              {officialStatus === 'pending'
+                ? 'Queued for generation...'
+                : 'Generating AI video...'}
+            </Text>
+          </View>
+          <Text style={styles.hintText}>
+            This may take a few minutes. You can close this and come back later.
+          </Text>
+        </View>
+      );
+    }
+
+    // failed — uploader can retry, others see unavailable
+    if (officialStatus === 'failed') {
+      return (
+        <View style={styles.tabContent}>
+          {officialError && (
+            <Text style={styles.errorText}>{officialError}</Text>
+          )}
+          {isUploader ? (
+            <TouchableOpacity style={styles.warningButton} onPress={handleGenerateOfficial}>
+              <Ionicons name="refresh-outline" size={20} color="#fff" />
+              <Text style={styles.primaryButtonText}>Retry Generation</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.unavailableText}>
+              The historical AI video is currently unavailable.
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    // none — uploader can generate, others see not yet available
+    return (
+      <View style={styles.tabContent}>
+        {photo?.story ? (
+          <Text style={styles.storyText}>{photo.story}</Text>
+        ) : (
+          <Text style={styles.placeholderText}>No story available for this photo.</Text>
+        )}
+        {isUploader ? (
+          <TouchableOpacity style={styles.primaryButton} onPress={handleGenerateOfficial}>
+            <Ionicons name="videocam-outline" size={20} color="#fff" />
+            <Text style={styles.primaryButtonText}>Generate Historical AI Video</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.unavailableText}>
+            The historical AI video has not been generated yet.
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  const renderCustomTab = () => {
+    // completed — show success state with link to profile
+    if (customStatus === 'completed') {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.successRow}>
+            <Ionicons name="checkmark-circle-outline" size={24} color="#22c55e" />
+            <Text style={styles.successText}>Your video is ready!</Text>
+          </View>
+          <TouchableOpacity style={styles.successButton} onPress={handleGoToProfile}>
+            <Ionicons name="person-outline" size={20} color="#fff" />
+            <Text style={styles.primaryButtonText}>View in Profile → AI Videos</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // pending / processing — show spinner, user can close modal
+    if (customStatus === 'pending' || customStatus === 'processing') {
+      return (
+        <View style={styles.tabContent}>
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#6366f1" />
+            <Text style={styles.loadingText}>
+              {customStatus === 'pending'
+                ? 'Queued for generation...'
+                : 'Generating your video...'}
+            </Text>
+          </View>
+          <Text style={styles.hintText}>
+            You can close this modal. Your video will be ready in Profile → AI Videos
+            when complete.
+          </Text>
+          <TouchableOpacity style={styles.goToProfileButton} onPress={handleGoToProfile}>
+            <Text style={styles.goToProfileText}>Go to Profile</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // failed — show error + allow retry by resetting to none
+    if (customStatus === 'failed') {
+      return (
+        <View style={styles.tabContent}>
+          {customError && (
+            <Text style={styles.errorText}>{customError}</Text>
+          )}
+          <TouchableOpacity
+            style={styles.warningButton}
+            onPress={() => {
+              setCustomStatus('none');
+              setCustomError(null);
+              setCustomJobId(null);
+            }}
+          >
+            <Ionicons name="refresh-outline" size={20} color="#fff" />
+            <Text style={styles.primaryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // none — show prompt input + generate button
+    return (
+      <View style={styles.tabContent}>
+        <Text style={styles.instructionText}>
+          Describe how you want to recreate this historical moment in your own style.
+        </Text>
+        <TextInput
+          style={styles.promptInput}
+          placeholder="e.g. Show this scene at golden hour with people walking..."
+          placeholderTextColor="#9ca3af"
+          multiline
+          numberOfLines={4}
+          value={customPrompt}
+          onChangeText={setCustomPrompt}
+          maxLength={500}
+        />
+        <Text style={styles.charCount}>{customPrompt.length}/500</Text>
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            !customPrompt.trim() && styles.disabledButton,
+          ]}
+          onPress={handleGenerateCustom}
+          disabled={!customPrompt.trim()}
+        >
+          <Ionicons name="sparkles-outline" size={20} color="#fff" />
+          <Text style={styles.primaryButtonText}>Generate My Memory</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // ─── Guard ────────────────────────────────────────────────────────────────────
+
+  if (!photo) return null;
+
+  // ─── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <Modal
-      animationType="slide"
-      transparent={true}
       visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView 
-        style={styles.overlay} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.card}>
-            
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.title}>📍 Nearby Memory Discovered!</Text>
-                <Text style={styles.subtitle}>
-                  Only {Math.round(distance)}m away from where you stand.
-                </Text>
-              </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={theme.colors.gray500} />
-              </TouchableOpacity>
+        <View style={styles.sheet}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="location" size={18} color="#6366f1" />
+              <Text style={styles.headerTitle}>Nearby Memory Discovered!</Text>
             </View>
-
-            <ScrollView 
-              showsVerticalScrollIndicator={false} 
-              style={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* Image */}
-              <Image 
-                source={{ uri: photo.imageUrl }} 
-                style={styles.image}
-                resizeMode="cover"
-              />
-
-              {/* Title */}
-              <Text style={styles.storyTitle}>{photo.title || 'Historical Memory'}</Text>
-
-              {/* Tab Switcher */}
-              <View style={styles.tabContainer}>
-                <TouchableOpacity 
-                  style={[styles.tab, activeTab === 'original' && styles.activeTab]}
-                  onPress={() => setActiveTab('original')}
-                >
-                  <Text style={[styles.tabText, activeTab === 'original' && styles.activeTabText]}>
-                    Original Memory
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.tab, activeTab === 'custom' && styles.activeTab]}
-                  onPress={() => setActiveTab('custom')}
-                >
-                  <Text style={[styles.tabText, activeTab === 'custom' && styles.activeTabText]}>
-                    My Recreation
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Tab Content */}
-              <View style={styles.tabContentContainer}>
-                {activeTab === 'original' ? (
-                  <View style={styles.originalTrack}>
-                    <Text style={styles.storyText}>
-                      {photo.story || 'A piece of history resides here. Explore the past and uncover the hidden stories of old Hong Kong.'}
-                    </Text>
-                    
-                    <TouchableOpacity style={styles.playOriginalButton}>
-                      <Ionicons name="play-circle" size={24} color={theme.colors.white} style={styles.buttonIcon} />
-                      <Text style={styles.primaryButtonText}>Play Historical AI Video</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.customTrack}>
-                    <Text style={styles.customInstruction}>
-                      Use your imagination! Describe what you would see if you were standing here decades ago, and let AI bring it to life.
-                    </Text>
-                    
-                    <TextInput
-                      style={styles.textInput}
-                      multiline={true}
-                      placeholder="e.g., Crowded streets with neon signs, people wearing traditional clothes..."
-                      placeholderTextColor={theme.colors.gray500}
-                      value={customPrompt}
-                      onChangeText={setCustomPrompt}
-                      textAlignVertical="top"
-                    />
-
-                    <TouchableOpacity 
-                      style={[
-                        styles.generateCustomButton, 
-                        customPrompt.trim().length === 0 && styles.disabledButton
-                      ]}
-                      onPress={handleGenerateCustom}
-                      disabled={customPrompt.trim().length === 0}
-                    >
-                      <Ionicons name="sparkles" size={20} color={theme.colors.white} style={styles.buttonIcon} />
-                      <Text style={styles.primaryButtonText}>Generate My Memory</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.dismissButton} onPress={onClose}>
-                <Text style={styles.dismissButtonText}>Dismiss</Text>
-              </TouchableOpacity>
-            </View>
-
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={24} color="#6b7280" />
+            </TouchableOpacity>
           </View>
-        </SafeAreaView>
+
+          <Text style={styles.distanceText}>📍 {formattedDistance} away</Text>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Photo image */}
+            <Image
+              source={{ uri: photo.imageUrl }}
+              style={styles.photoImage}
+              resizeMode="cover"
+            />
+
+            {/* Title */}
+            {photo.title && (
+              <Text style={styles.photoTitle}>{photo.title}</Text>
+            )}
+
+            {/* Tab bar */}
+            <View style={styles.tabBar}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'original' && styles.activeTab]}
+                onPress={() => setActiveTab('original')}
+              >
+                <Text style={[styles.tabText, activeTab === 'original' && styles.activeTabText]}>
+                  Original Memory
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'custom' && styles.activeTab]}
+                onPress={() => setActiveTab('custom')}
+              >
+                <Text style={[styles.tabText, activeTab === 'custom' && styles.activeTabText]}>
+                  My Recreation
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Tab content */}
+            {activeTab === 'original' ? renderOfficialTab() : renderCustomTab()}
+          </ScrollView>
+
+          {/* Footer */}
+          <TouchableOpacity style={styles.dismissButton} onPress={onClose}>
+            <Text style={styles.dismissText}>Dismiss</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  safeArea: {
-    width: '100%',
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '90%',
-  },
-  card: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.borderRadius.md,
-    borderTopRightRadius: theme.borderRadius.md,
-    paddingTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
-    flexShrink: 1,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
-  headerTextContainer: {
-    flex: 1,
-    paddingRight: theme.spacing.md,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  title: {
-    fontSize: theme.fontSize.xl,
-    fontFamily: theme.fonts.title,   // Serif 档案标题感
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
-    marginBottom: 4,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
-  subtitle: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.gray500,
-    lineHeight: 18,
-  },
-  closeButton: {
-    padding: theme.spacing.xs,
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  distanceText: {
+    fontSize: 13,
+    color: '#6b7280',
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   scrollContent: {
-    flexShrink: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  image: {
+  photoImage: {
     width: '100%',
     height: 180,
-    borderRadius: theme.borderRadius.sm,
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.gray100,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderRadius: 12,
+    marginBottom: 12,
   },
-  storyTitle: {
-    fontSize: theme.fontSize.xl,
-    fontFamily: theme.fonts.title,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+  photoTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
   },
-  
-  // Tab Styles
-  tabContainer: {
+  tabBar: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    padding: 3,
+    marginBottom: 16,
   },
   tab: {
     flex: 1,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderRadius: 6,
   },
   activeTab: {
-    borderBottomColor: theme.colors.primary,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
   tabText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.gray500,
+    fontSize: 13,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   activeTabText: {
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.bold,
+    color: '#111827',
+    fontWeight: '600',
   },
-  
-  // Content Styles
-  tabContentContainer: {
-    paddingBottom: theme.spacing.md,
-    minHeight: 180,
-  },
-  originalTrack: {
-    flex: 1,
+  tabContent: {
+    minHeight: 160,
+    gap: 12,
   },
   storyText: {
-    fontSize: theme.fontSize.md,
-    lineHeight: 26,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.lg,
-    fontFamily: theme.fonts.body,
-  },
-  playOriginalButton: {
-    backgroundColor: theme.colors.text,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  
-  customTrack: {
-    flex: 1,
-  },
-  customInstruction: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.gray500,
-    marginBottom: theme.spacing.sm,
+    fontSize: 14,
+    color: '#374151',
     lineHeight: 20,
   },
-  textInput: {
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.sm,
-    padding: theme.spacing.md,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.text,
-    minHeight: 100,
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  placeholderText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    fontStyle: 'italic',
   },
-  generateCustomButton: {
-    backgroundColor: theme.colors.primary,
+  unavailableText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  promptInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: '#111827',
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textAlign: 'right',
+    marginTop: -8,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '500',
+  },
+  hintText: {
+    fontSize: 13,
+    color: '#6b7280',
+    lineHeight: 18,
+  },
+  successRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  successText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#22c55e',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#ef4444',
+    lineHeight: 18,
+  },
+  primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  disabledButton: {
-    backgroundColor: theme.colors.gray500,
-    opacity: 0.7,
-  },
-  buttonIcon: {
-    marginRight: 8,
+    backgroundColor: '#6366f1',
+    borderRadius: 10,
+    paddingVertical: 12,
+    gap: 8,
   },
   primaryButtonText: {
-    color: theme.colors.white,
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  
-  // Footer
-  footer: {
-    paddingVertical: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
+  warningButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f59e0b',
+    borderRadius: 10,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  successButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#22c55e',
+    borderRadius: 10,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#d1d5db',
+  },
+  goToProfileButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  goToProfileText: {
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   dismissButton: {
+    marginHorizontal: 16,
+    marginTop: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
   },
-  dismissButtonText: {
-    color: theme.colors.gray500,
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.medium,
+  dismissText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
   },
 });

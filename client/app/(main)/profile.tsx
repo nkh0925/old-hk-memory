@@ -11,14 +11,20 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  FlatList,
+  Dimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { useAuthStore } from '@/stores/authStore';
 import { userService } from '@/services/userService';
 import { Photo } from '@/types';
 import { PhotoGrid } from '@/components/common/PhotoGrid';
+import { getMyVideos, MyVideo } from '@/services/videoService';
 import theme from 'src/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface PaginationState {
   page: number;
@@ -26,10 +32,11 @@ interface PaginationState {
 }
 
 export default function ProfileScreen() {
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  // 新增：用于更新用户信息的 store action（假设你的 authStore 已支持 updateProfile）
-  const updateProfile = useAuthStore((state) => state.updateProfile); // 如果没有，请告诉我，我帮你补充 store 代码
+  const updateProfile = useAuthStore((state) => state.updateProfile);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,11 +44,10 @@ export default function ProfileScreen() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  
-  // 新增：编辑个人信息 Modal 状态
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [newUsername, setNewUsername] = useState('');
-  const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null); // 简单 URI 占位，后续可接图片选择器
+  const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -49,9 +55,20 @@ export default function ProfileScreen() {
     totalPages: 1,
   });
 
-  const [activeTab, setActiveTab] = useState<'photos' | 'videos'>('photos');
+  // Initialize activeTab from route param if provided
+  const [activeTab, setActiveTab] = useState<'photos' | 'videos'>(
+    tabParam === 'videos' ? 'videos' : 'photos'
+  );
+
+  // ── AI Videos state ──
+  const [myVideos, setMyVideos] = useState<MyVideo[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
+  const [videosError, setVideosError] = useState<string | null>(null);
+  const [playingVideo, setPlayingVideo] = useState<MyVideo | null>(null);
 
   const LIMIT = 20;
+
+  // ─── Photos fetch ─────────────────────────────────────────────────────────────
 
   const fetchPhotos = useCallback(async (page: number, isRefresh = false) => {
     try {
@@ -87,11 +104,50 @@ export default function ProfileScreen() {
     loadInitial();
   }, [fetchPhotos]);
 
+  // ─── AI Videos fetch ──────────────────────────────────────────────────────────
+  const fetchMyVideos = useCallback(async () => {
+    setVideosLoading(true);
+    setVideosError(null);
+    try {
+      const data = await getMyVideos();
+      setMyVideos(data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch AI videos:', err);
+      setVideosError('Failed to load videos');
+    } finally {
+      setVideosLoading(false);
+    }
+  }, []);
+
+  // 初始化 + tab 切换时刷新对应数据
+  useEffect(() => {
+    if (activeTab === 'photos') {
+      fetchPhotos(1, true);
+    } else {
+      fetchMyVideos();
+    }
+  }, [activeTab, fetchPhotos, fetchMyVideos]);
+
+  // Fetch videos when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'videos') {
+      fetchMyVideos();
+    }
+  }, [activeTab, fetchMyVideos]);
+
+  // ─── Refresh ──────────────────────────────────────────────────────────────────
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchPhotos(1, true);
+    if (activeTab === 'photos') {
+      await fetchPhotos(1, true);
+    } else {
+      await fetchMyVideos();
+    }
     setRefreshing(false);
-  }, [fetchPhotos]);
+  }, [activeTab, fetchPhotos, fetchMyVideos]);
+
+  // ─── Photos handlers ──────────────────────────────────────────────────────────
 
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || !hasMore || activeTab !== 'photos') return;
@@ -104,26 +160,23 @@ export default function ProfileScreen() {
     router.push(`/photo/${photoId}` as any);
   }, []);
 
+  // ─── Auth handlers ────────────────────────────────────────────────────────────
+
   const handleLogoutPress = useCallback(() => {
     setShowMenu(false);
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/login' as any);
-          },
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          logout();
+          router.replace('/login' as any);
         },
-      ]
-    );
+      },
+    ]);
   }, [logout]);
 
-  // 新增：打开编辑 Modal
   const handleEditProfile = () => {
     setShowMenu(false);
     setNewUsername(user?.username || '');
@@ -136,15 +189,9 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Username cannot be empty');
       return;
     }
-
     setIsUpdating(true);
     try {
-      // 调用 store 更新（请确保 authStore 有 updateProfile 方法）
-      await updateProfile({
-        username: newUsername.trim(),
-        // avatar: newAvatarUri || user?.avatar,
-      });
-      
+      await updateProfile({ username: newUsername.trim() });
       Alert.alert('Success', 'Profile updated successfully');
       setShowEditModal(false);
     } catch (error) {
@@ -154,14 +201,106 @@ export default function ProfileScreen() {
     }
   };
 
+  // ─── Derived ──────────────────────────────────────────────────────────────────
+
   const displayName = user?.username || 'Unknown User';
   const displayEmail = user?.email || '';
   const displayPhotosCount = user?.photosCount ?? photos.length;
   const avatarInitial = displayName.charAt(0).toUpperCase();
 
+  // ─── Render: AI Video card ────────────────────────────────────────────────────
+
+  const renderVideoCard = ({ item }: { item: MyVideo }) => (
+    <TouchableOpacity
+      style={styles.videoCard}
+      activeOpacity={0.8}
+      onPress={() => setPlayingVideo(item)}
+    >
+      {/* Thumbnail */}
+      <View style={styles.videoThumbnailWrapper}>
+        {item.photoImageUrl ? (
+          <Image
+            source={{ uri: item.photoImageUrl }}
+            style={styles.videoThumbnail}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.videoThumbnail, styles.videoThumbnailPlaceholder]}>
+            <Ionicons name="image-outline" size={32} color={theme.colors.gray500} />
+          </View>
+        )}
+        <View style={styles.playOverlay}>
+          <Ionicons name="play-circle" size={40} color="#fff" />
+        </View>
+      </View>
+
+      {/* Meta */}
+      <View style={styles.videoMeta}>
+        {item.photoEra && (
+          <Text style={styles.videoEra}>{item.photoEra}</Text>
+        )}
+        <Text style={styles.videoPrompt} numberOfLines={2}>
+          {item.prompt}
+        </Text>
+        {item.generatedAt && (
+          <Text style={styles.videoDate}>
+            {new Date(item.generatedAt).toLocaleDateString()}
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  // ─── Render: AI Videos tab content ───────────────────────────────────────────
+
+  const renderVideosTab = () => {
+    if (videosLoading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      );
+    }
+
+    if (videosError) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.errorText}>{videosError}</Text>
+          <TouchableOpacity onPress={fetchMyVideos}>
+            <Text style={styles.retryText}>Tap to retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (myVideos.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="videocam-outline" size={64} color={theme.colors.gray500} />
+          <Text style={styles.emptyText}>No AI videos yet</Text>
+          <Text style={styles.emptySubText}>
+            Walk near a historical photo and create your own recreation
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={myVideos}
+        keyExtractor={(item) => item.videoId}
+        renderItem={renderVideoCard}
+        contentContainerStyle={styles.videoList}
+        scrollEnabled={false}
+      />
+    );
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <View style={styles.container}>
-      {/* User Info Header - 精简档案卡片 */}
+      {/* User section */}
       <View style={styles.userSection}>
         <View style={styles.userInfoRow}>
           {user?.avatar ? (
@@ -174,12 +313,8 @@ export default function ProfileScreen() {
           <View style={styles.userDetails}>
             <Text style={styles.username}>{displayName}</Text>
             <Text style={styles.email}>{displayEmail}</Text>
-            <Text style={styles.photosCount}>
-              {displayPhotosCount} photos
-            </Text>
+            <Text style={styles.photosCount}>{displayPhotosCount} photos</Text>
           </View>
-
-          {/* 右上角三点菜单按钮 */}
           <TouchableOpacity
             style={styles.menuButton}
             onPress={() => setShowMenu(true)}
@@ -190,7 +325,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* TikTok-style Tabs */}
+      {/* Tab bar */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'photos' && styles.tabItemActive]}
@@ -210,51 +345,89 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Content Area */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
-        }
-        onScrollEndDrag={handleLoadMore}
-        scrollEventThrottle={16}
-      >
-        {activeTab === 'photos' ? (
-          <>
-            {fetchError && (
+      {/* Main scroll */}
+      {activeTab === 'photos' ? (
+        <FlatList
+          data={photos}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <PhotoGrid 
+              photos={[item]} 
+              onPhotoPress={handlePhotoPress} 
+              numColumns={2} 
+            />
+          )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator style={{ padding: 20 }} color={theme.colors.primary} /> : null
+          }
+          ListEmptyComponent={
+            fetchError ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{fetchError}</Text>
-                <TouchableOpacity onPress={onRefresh}>
+                <TouchableOpacity onPress={() => fetchPhotos(1, true)}>
                   <Text style={styles.retryText}>Tap to retry</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null
+          }
+        />
+      ) : (
+        <FlatList
+          data={[{ key: 'videos' }]}  
+          renderItem={() => renderVideosTab()}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
+          }
+          scrollEnabled={true}
+        />
+      )}
 
-            <PhotoGrid
-              photos={photos}
-              onPhotoPress={handlePhotoPress}
-              onLoadMore={handleLoadMore}
-              isLoading={loadingMore}
-              numColumns={2}
+      {/* Video Player Modal */}
+      <Modal
+        visible={!!playingVideo}
+        animationType="fade"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => setPlayingVideo(null)}
+      >
+        <View style={styles.playerOverlay}>
+          <TouchableOpacity
+            style={styles.playerClose}
+            onPress={() => setPlayingVideo(null)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close-circle" size={36} color="#fff" />
+          </TouchableOpacity>
+
+          {playingVideo?.url && (
+            <Video
+              source={{ uri: playingVideo.url }}
+              style={styles.videoPlayer}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              useNativeControls
+              isLooping={false}
             />
+          )}
 
-            {loadingMore && (
-              <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              </View>
+          {/* Video info */}
+          <View style={styles.playerInfo}>
+            {playingVideo?.photoEra && (
+              <Text style={styles.playerEra}>{playingVideo.photoEra}</Text>
             )}
-          </>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="videocam-outline" size={64} color={theme.colors.gray500} />
-            <Text style={styles.emptyText}>No AI videos yet</Text>
-            <Text style={styles.emptySubText}>AI-generated videos will appear here</Text>
+            <Text style={styles.playerPrompt} numberOfLines={3}>
+              {playingVideo?.prompt}
+            </Text>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </Modal>
 
-      {/* 三点菜单 Modal */}
+      {/* Menu Modal */}
       <Modal
         visible={showMenu}
         transparent
@@ -279,7 +452,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* 新增：编辑个人信息 Modal - 档案式简洁弹窗 */}
+      {/* Edit Profile Modal */}
       <Modal
         visible={showEditModal}
         transparent
@@ -289,23 +462,20 @@ export default function ProfileScreen() {
         <View style={styles.editModalOverlay}>
           <View style={styles.editModalContainer}>
             <Text style={styles.editModalTitle}>Edit Profile</Text>
-
-            {/* 头像部分 */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.avatarEditContainer}
               onPress={() => {
-                // TODO: 后续接入 ImagePicker，这里用 Alert 模拟选择
                 Alert.alert('Choose Avatar', 'Image picker will be integrated here', [
                   { text: 'Cancel' },
-                  { text: 'Use Demo URI', onPress: () => setNewAvatarUri('https://example.com/new-avatar.jpg') }
+                  {
+                    text: 'Use Demo URI',
+                    onPress: () => setNewAvatarUri('https://example.com/new-avatar.jpg'),
+                  },
                 ]);
               }}
             >
               {newAvatarUri || user?.avatar ? (
-                <Image 
-                  // source={{ uri: newAvatarUri || user?.avatar }} 
-                  style={styles.avatarLarge} 
-                />
+                <Image style={styles.avatarLarge} />
               ) : (
                 <View style={[styles.avatarLarge, styles.avatarPlaceholder]}>
                   <Text style={styles.avatarPlaceholderText}>{avatarInitial}</Text>
@@ -314,7 +484,6 @@ export default function ProfileScreen() {
               <Text style={styles.changeAvatarText}>Tap to change avatar</Text>
             </TouchableOpacity>
 
-            {/* 用户名输入 */}
             <Text style={styles.inputLabel}>Username</Text>
             <TextInput
               style={styles.input}
@@ -326,14 +495,14 @@ export default function ProfileScreen() {
             />
 
             <View style={styles.editButtonRow}>
-              <TouchableOpacity 
-                style={[styles.editButton, styles.cancelButton]} 
+              <TouchableOpacity
+                style={[styles.editButton, styles.cancelButton]}
                 onPress={() => setShowEditModal(false)}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.editButton, styles.saveButton]} 
+              <TouchableOpacity
+                style={[styles.editButton, styles.saveButton]}
                 onPress={handleSaveProfile}
                 disabled={isUpdating}
               >
@@ -422,7 +591,6 @@ const styles = StyleSheet.create({
   menuButton: {
     padding: 8,
   },
-
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -446,10 +614,8 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: theme.colors.primary,
   },
-
   content: { flex: 1 },
   contentContainer: { paddingBottom: 40 },
-
   errorContainer: {
     padding: 20,
     alignItems: 'center',
@@ -463,7 +629,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     marginTop: 8,
   },
-
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -482,13 +647,10 @@ const styles = StyleSheet.create({
     color: theme.colors.gray500,
     textAlign: 'center',
   },
-
   loadingMore: {
     paddingVertical: 20,
     alignItems: 'center',
   },
-
-  /* Menu Modal */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -516,8 +678,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text,
   },
-
-  /* Edit Profile Modal */
   editModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -579,5 +739,90 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontWeight: theme.fontWeight.semibold,
+  },
+  // ── Video card ──
+  videoList: {
+    padding: 16,
+    gap: 16,
+  },
+  videoCard: {
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  videoThumbnailWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 180,
+  },
+  videoThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  videoThumbnailPlaceholder: {
+    backgroundColor: theme.colors.gray500,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  videoMeta: {
+    padding: 12,
+    gap: 4,
+  },
+  videoEra: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  videoPrompt: {
+    fontSize: 14,
+    color: theme.colors.text,
+    lineHeight: 20,
+  },
+  videoDate: {
+    fontSize: 12,
+    color: theme.colors.gray500,
+    marginTop: 4,
+  },
+  // ── Video Player Modal ──
+  playerOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+  },
+  playerClose: {
+    position: 'absolute',
+    top: 52,
+    right: 16,
+    zIndex: 10,
+  },
+  videoPlayer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * (9 / 16),
+  },
+  playerInfo: {
+    padding: 20,
+    gap: 8,
+  },
+  playerEra: {
+    fontSize: 13,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  playerPrompt: {
+    fontSize: 14,
+    color: '#e5e7eb',
+    lineHeight: 20,
   },
 });

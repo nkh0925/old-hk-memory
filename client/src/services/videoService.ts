@@ -1,244 +1,186 @@
-/**
- * Video Generation API Service
- * Handles AI-powered video generation from historical photos
- */
+import api from './api';
 
-import api, { ApiException } from './api';
-import type { ApiResponse } from '../types';
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-/* =======================
-   Type Definitions
-======================= */
+export type VideoStatus = 'none' | 'pending' | 'processing' | 'completed' | 'failed';
 
-/**
- * Video generation job status
- */
-export type VideoStatus = 'pending' | 'processing' | 'completed' | 'failed';
-
-/**
- * Response from video generation initiation
- */
 export interface VideoGenerationResponse {
   photoId: string;
   jobId: string;
   status: VideoStatus;
+  isCustom: boolean;
 }
 
-/**
- * Response from video status check
- */
+// Official Memory polling response
 export interface VideoStatusResponse {
   photoId: string;
   status: VideoStatus;
+  jobId: string;
   videoUrl?: string;
   error?: string;
 }
 
-/**
- * Response containing video URL
- */
-export interface VideoUrlResponse {
-  videoUrl: string;
+// My Recreation polling response
+export interface JobStatusResponse {
+  jobId: string;
+  status: VideoStatus;
+  videoUrl?: string | null;
+  error?: string | null;
 }
 
-/* =======================
-   Service Functions
-======================= */
+export interface VideoUrlResponse {
+  videoUrl: string;
+  duration?: number;
+  generatedAt?: string;
+}
 
-/**
- * Initiate video generation for a photo
- * 
- * @param photoId - The ID of the photo to generate video from
- * @returns Promise with generation job details
- * @throws {ApiException} When request fails
- * 
- * @example
- * ```typescript
- * try {
- *   const result = await generateVideo('photo123');
- *   console.log('Job ID:', result.jobId);
- * } catch (error) {
- *   if (error instanceof ApiException) {
- *     console.error(error.message);
- *   }
- * }
- * ```
- */
+export interface MyVideo {
+  videoId: string;
+  photoId: string;
+  photoImageUrl: string | null;
+  photoEra: string | null;
+  prompt: string;
+  url: string;
+  duration?: number;
+  generatedAt?: string;
+}
+
+// ─── API Calls ─────────────────────────────────────────────────────────────────
+
+// POST /api/v1/videos/generate
+// isCustom=false → Official Memory (uploader only, persists to Photo.aiVideo)
+// isCustom=true  → My Recreation (any user, persists to UserVideo collection)
 export const generateVideo = async (
-  photoId: string
+  photoId: string,
+  prompt?: string,
+  isCustom: boolean = false
 ): Promise<VideoGenerationResponse> => {
-  try {
-    const response = await api.post<ApiResponse<VideoGenerationResponse>>(
-      '/videos/generate',
-      { photoId }
-    );
-
-    return response.data.data;
-  } catch (error) {
-    if (error instanceof ApiException) {
-      throw error;
-    }
-    throw new ApiException(
-      'Failed to initiate video generation',
-      'VIDEO_GENERATION_FAILED',
-      500
-    );
-  }
+  const response = await api.post<{ success: boolean; data: VideoGenerationResponse }>(
+    '/videos/generate',
+    { photoId, prompt, isCustom }
+  );
+  return response.data.data;
 };
 
-/**
- * Check the status of a video generation job
- * 
- * @param photoId - The ID of the photo being processed
- * @returns Promise with current job status and video URL if completed
- * @throws {ApiException} When request fails
- * 
- * @example
- * ```typescript
- * try {
- *   const status = await checkVideoStatus('photo123');
- *   if (status.status === 'completed' && status.videoUrl) {
- *     console.log('Video ready:', status.videoUrl);
- *   }
- * } catch (error) {
- *   console.error('Status check failed:', error);
- * }
- * ```
- */
-export const checkVideoStatus = async (
-  photoId: string
-): Promise<VideoStatusResponse> => {
-  try {
-    const response = await api.post<ApiResponse<VideoStatusResponse>>(
-      '/videos/status',
-      { photoId }
-    );
-
-    return response.data.data;
-  } catch (error) {
-    if (error instanceof ApiException) {
-      throw error;
-    }
-    throw new ApiException(
-      'Failed to check video status',
-      'VIDEO_STATUS_CHECK_FAILED',
-      500
-    );
-  }
+// POST /api/v1/videos/status
+// Official Memory polling — backend reads jobId from Photo document
+export const checkVideoStatus = async (photoId: string): Promise<VideoStatusResponse> => {
+  const response = await api.post<{ success: boolean; data: VideoStatusResponse }>(
+    '/videos/status',
+    { photoId }
+  );
+  return response.data.data;
 };
 
-/**
- * Get the video URL for a completed video
- * 
- * @param photoId - The ID of the photo with completed video
- * @returns Promise with video URL
- * @throws {ApiException} When request fails or video not found
- * 
- * @example
- * ```typescript
- * try {
- *   const { videoUrl } = await getVideoUrl('photo123');
- *   // Play video from videoUrl
- * } catch (error) {
- *   if (error instanceof ApiException && error.status === 404) {
- *     console.log('Video not found or not ready');
- *   }
- * }
- * ```
- */
-export const getVideoUrl = async (
-  photoId: string
-): Promise<VideoUrlResponse> => {
-  try {
-    const response = await api.get<ApiResponse<VideoUrlResponse>>(
-      `/videos/${photoId}`
-    );
-
-    return response.data.data;
-  } catch (error) {
-    if (error instanceof ApiException) {
-      throw error;
-    }
-    throw new ApiException(
-      'Failed to retrieve video URL',
-      'VIDEO_URL_FETCH_FAILED',
-      500
-    );
-  }
+// POST /api/v1/videos/job-status
+// My Recreation polling — backend reads jobId directly from UserVideo document
+export const checkJobStatus = async (jobId: string): Promise<JobStatusResponse> => {
+  const response = await api.post<{ success: boolean; data: JobStatusResponse }>(
+    '/videos/job-status',
+    { jobId }
+  );
+  return response.data.data;
 };
 
-/**
- * Poll video status until completion or failure
- * Useful for showing progress to users
- * 
- * @param photoId - The ID of the photo being processed
- * @param onProgress - Callback function called on each status update
- * @param interval - Polling interval in milliseconds (default: 3000)
- * @param maxAttempts - Maximum number of polling attempts (default: 60)
- * @returns Promise with final video status
- * @throws {ApiException} When polling fails or times out
- * 
- * @example
- * ```typescript
- * try {
- *   const result = await pollVideoStatus(
- *     'photo123',
- *     (status) => console.log('Current status:', status.status),
- *     3000,
- *     60
- *   );
- *   if (result.status === 'completed') {
- *     console.log('Video URL:', result.videoUrl);
- *   }
- * } catch (error) {
- *   console.error('Polling failed:', error);
- * }
- * ```
- */
-export const pollVideoStatus = async (
+// GET /api/v1/videos/my-videos
+// Returns all completed UserVideo records for the authenticated user
+export const getMyVideos = async (): Promise<MyVideo[]> => {
+  const response = await api.get<{ success: boolean; data: MyVideo[] }>(
+    '/videos/my-videos'
+  );
+  return response.data.data;
+};
+
+// POST /api/v1/videos/url
+// Official Memory video URL — only needed if photo data is stale
+export const getVideoUrl = async (photoId: string): Promise<VideoUrlResponse> => {
+  const response = await api.post<{ success: boolean; data: VideoUrlResponse }>(
+    '/videos/url',
+    { photoId }
+  );
+  return response.data.data;
+};
+
+// ─── Polling Utility ───────────────────────────────────────────────────────────
+
+// Official Memory polling — polls POST /videos/status by photoId
+export const pollVideoStatus = (
   photoId: string,
   onProgress?: (status: VideoStatusResponse) => void,
-  interval: number = 3000,
+  intervalMs: number = 5000,
   maxAttempts: number = 60
 ): Promise<VideoStatusResponse> => {
-  let attempts = 0;
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
 
-  const poll = async (): Promise<VideoStatusResponse> => {
-    attempts++;
+    const timer = setInterval(async () => {
+      attempts += 1;
 
-    if (attempts > maxAttempts) {
-      throw new ApiException(
-        'Video generation timeout',
-        'VIDEO_GENERATION_TIMEOUT',
-        408
-      );
-    }
+      try {
+        const result = await checkVideoStatus(photoId);
+        onProgress?.(result);
 
-    const status = await checkVideoStatus(photoId);
+        if (result.status === 'completed' || result.status === 'failed') {
+          clearInterval(timer);
+          resolve(result);
+          return;
+        }
 
-    // Call progress callback if provided
-    if (onProgress) {
-      onProgress(status);
-    }
+        if (attempts >= maxAttempts) {
+          clearInterval(timer);
+          reject(new Error('VIDEO_GENERATION_TIMEOUT'));
+        }
+      } catch (err) {
+        clearInterval(timer);
+        reject(err);
+      }
+    }, intervalMs);
+  });
+};
 
-    // Return if completed or failed
-    if (status.status === 'completed' || status.status === 'failed') {
-      return status;
-    }
+// My Recreation polling — polls POST /videos/job-status by jobId
+export const pollJobStatus = (
+  jobId: string,
+  onProgress?: (status: JobStatusResponse) => void,
+  intervalMs: number = 5000,
+  maxAttempts: number = 60
+): Promise<JobStatusResponse> => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
 
-    // Wait and poll again
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    return poll();
-  };
+    const timer = setInterval(async () => {
+      attempts += 1;
 
-  return poll();
+      try {
+        const result = await checkJobStatus(jobId);
+        onProgress?.(result);
+
+        if (result.status === 'completed' || result.status === 'failed') {
+          clearInterval(timer);
+          resolve(result);
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(timer);
+          reject(new Error('VIDEO_GENERATION_TIMEOUT'));
+        }
+      } catch (err) {
+        clearInterval(timer);
+        reject(err);
+      }
+    }, intervalMs);
+  });
 };
 
 const videoService = {
   generateVideo,
   checkVideoStatus,
+  checkJobStatus,
+  getMyVideos,
   getVideoUrl,
   pollVideoStatus,
+  pollJobStatus,
 };
 
 export default videoService;
